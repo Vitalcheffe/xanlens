@@ -1,0 +1,44 @@
+# AI Crawlers — Welcome
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Anthropic
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+# Default — allow all
+User-agent: *
+Allow: /
+
+# Block known bad actors
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+Sitemap: https://xanlens.com/sitemap.xml
+
+# AI content file
+# https://llmstxt.org
+# See: https://xanlens.com/llms.txt

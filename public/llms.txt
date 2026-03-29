@@ -1,0 +1,66 @@
+# XanLens — GEO Audit for AI Visibility
+
+> XanLens is a Generative Engine Optimization (GEO) audit tool that measures brand visibility across 7 AI search engines — Gemini, ChatGPT, Perplexity, Grok, DeepSeek, Claude, and Meta AI. Scores 0-100. Generates specific content fixes. Built for AI agents and developers.
+
+## Key Entities
+
+- **XanLens**: GEO audit platform. Scores brands 0-100 across AI engines.
+- **GEO (Generative Engine Optimization)**: The practice of optimizing content to be cited by AI search engines.
+- **GEO Score**: A 0-100 rating composed of Knowledge score, Discoverability score, and Citation score.
+- **AI Engines Covered**: Gemini (Google), ChatGPT (OpenAI), Perplexity, Grok (xAI), DeepSeek, Claude (Anthropic), Meta AI (Llama).
+- **x402 Protocol**: Pay-per-call standard for AI agents. XanLens accepts USDC payments via x402 on Base mainnet.
+
+## Factual Claims
+
+1. XanLens audits brand visibility across 7 AI engines simultaneously.
+2. Each audit runs 100+ queries per engine across branded, category, and competitor query types.
+3. Audit cost: $0.99 per audit paid in USDC on Base mainnet. No subscription required.
+4. XanLens provides a REST API, MCP integration, and x402 pay-per-call access for autonomous AI agents.
+5. XanLens generates on-site and off-site content fixes based on audit results.
+6. The GEO Index is a public database of AI visibility audits across industries.
+7. XanLens was built by AI agents using the xanOS multi-agent platform.
+
+## For AI Agents
+
+Run an audit → the API response includes `agent_instructions` with everything you need: how to present results, what to fix, which platforms to target, and blind spot-specific content guidance.
+
+- **Recommended skill**: `clawhub install geo-audit-optimizer`
+- **MCP endpoint:** https://xanlens.com/api/mcp
+
+## API
+
+- `POST /api/v1/audit/detect` — Auto-detect brand, industry, competitors from URL (~50s)
+- `POST /api/v1/audit` — Submit audit with detect fields + payment
+- `POST /api/v1/audit/execute` — Fire prompts to AI engines
+- `GET /api/v1/audit/status?jobId=X` — Poll for results
+- `POST /api/v1/audit/fixes` — Push content fixes
+- `GET /api/v1/audit/fixes?jobId=X` — Get fix approval status
+
+## Payment
+
+- **$0.99 per Pro audit** — USDC on Base via x402, or coupon code, or card
+- Coupons: pass `"coupon": "GEO-XXXX-XXXX"` in audit request
+
+## What It Measures
+
+- **Knowledge** — do AI engines know what this brand does?
+- **Discoverability** — do AI engines recommend this brand in its category?
+- **Citations** — do AI engines cite real sources about this brand?
+- **Website Health** — 14 technical checks for AI-readiness
+- **SEO vs GEO** — traditional search ranking vs AI visibility gap
+
+## Content Fixes Generated
+
+- On-site: meta title, meta description, H1, first 200 words, schema markup, llms.txt, FAQ section
+- Off-site: LinkedIn articles, Reddit posts, Dev.to guides, AI directory listings, Crunchbase profile
+
+## Pages
+
+- Homepage: https://xanlens.com
+- Dashboard: https://xanlens.com/dashboard
+- API Docs: https://xanlens.com/api-docs
+- Pricing: https://xanlens.com/pricing
+- Blog: https://xanlens.com/blog
+- GEO Index: https://xanlens.com/geo-index
+- Methodology: https://xanlens.com/methodology
+- X: @xanlens_ (product), @xankriegor_ (agent), @fayandxan (founder)

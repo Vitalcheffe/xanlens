@@ -1,0 +1,1280 @@
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY || "";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GITHUB_MODELS_TOKEN = process.env.GITHUB_MODELS_TOKEN || "";
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY || "";
+const XAI_API_KEY = process.env.XAI_API_KEY || "";
+
+export interface AuditRequest {
+  brand: string;
+  website?: string;
+  industry: string;
+  competitors?: string[];
+  engines?: string[];
+}
+
+// --- AI Engine Queries ---
+
+async function queryGemini(prompt: string): Promise<string> {
+  if (!GEMINI_API_KEY) return "";
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0 } }),
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    const data = await res.json();
+    if (data?.error) {
+      console.error(`[Gemini] API error: ${data.error.message || JSON.stringify(data.error)}`);
+      return "";
+    }
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  } catch (e) {
+    console.error(`[Gemini] Error: ${e}`);
+    return "";
+  }
+}
+
+// Helper to run Gemini queries in batches to avoid rate limiting
+async function queryGeminiBatch(prompts: string[], batchSize = 3): Promise<string[]> {
+  const results: string[] = [];
+  for (let i = 0; i < prompts.length; i += batchSize) {
+    const batch = prompts.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(p => queryGemini(p).catch(() => "")));
+    results.push(...batchResults);
+    // Delay between batches to avoid Gemini rate limits
+    if (i + batchSize < prompts.length) {
+      await new Promise(r => setTimeout(r, 800));
+    }
+  }
+  return results;
+}
+
+async function queryChatGPT(prompt: string): Promise<string> {
+  if (!OPENAI_API_KEY) return "";
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`[ChatGPT] ${data.error.message}`); return ""; }
+    return data?.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    console.error(`[ChatGPT] Error: ${e}`);
+    return "";
+  }
+}
+
+async function queryDeepSeek(prompt: string): Promise<string> {
+  if (!DEEPSEEK_API_KEY) return "";
+  try {
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${DEEPSEEK_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(25000),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`[DeepSeek] ${data.error.message}`); return ""; }
+    return data?.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    console.error(`[DeepSeek] Error: ${e}`);
+    return "";
+  }
+}
+
+async function queryGroq(prompt: string): Promise<string> {
+  if (!GROQ_API_KEY) return "";
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`[Groq/Llama] ${data.error.message}`); return ""; }
+    return data?.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    console.error(`[Groq/Llama] Error: ${e}`);
+    return "";
+  }
+}
+
+async function queryGitHubModels(prompt: string): Promise<string> {
+  if (!GITHUB_MODELS_TOKEN) return "";
+  try {
+    const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GITHUB_MODELS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`[GitHub/GPT-4o] ${data.error.message}`); return ""; }
+    return data?.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    console.error(`[GitHub/GPT-4o] Error: ${e}`);
+    return "";
+  }
+}
+
+async function queryClaude(prompt: string): Promise<string> {
+  if (!ANTHROPIC_API_KEY) return "";
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 512,
+        messages: [{ role: "user", content: prompt }],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`[Claude] ${data.error.message}`); return ""; }
+    return data?.content?.[0]?.text || "";
+  } catch (e) {
+    console.error(`[Claude] Error: ${e}`);
+    return "";
+  }
+}
+
+async function queryPerplexity(prompt: string): Promise<string> {
+  if (!PERPLEXITY_API_KEY) return "";
+  try {
+    const res = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`[Perplexity] ${data.error.message}`); return ""; }
+    return data?.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    console.error(`[Perplexity] Error: ${e}`);
+    return "";
+  }
+}
+
+async function queryGrok(prompt: string): Promise<string> {
+  if (!XAI_API_KEY) return "";
+  try {
+    const res = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${XAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "grok-4-1-fast-reasoning",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const data = await res.json();
+    if (data.error) { console.error(`[Grok] ${data.error.message}`); return ""; }
+    return data?.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    console.error(`[Grok] Error: ${e}`);
+    return "";
+  }
+}
+
+async function queryTavily(query: string): Promise<{ answer: string; results: Array<{ title: string; url: string; content: string }> }> {
+  if (!TAVILY_API_KEY) return { answer: "", results: [] };
+  try {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${TAVILY_API_KEY}`,
+      },
+      body: JSON.stringify({ query, include_answer: true, max_results: 5 }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return { answer: "", results: [] };
+    const data = await res.json();
+    if (data.status === "error") return { answer: "", results: [] };
+    return { answer: data.answer || "", results: data.results || [] };
+  } catch (e) {
+    console.error(`[Tavily] Error: ${e}`);
+    return { answer: "", results: [] };
+  }
+}
+
+// --- Analysis ---
+
+interface MentionAnalysis {
+  mentions: number;
+  sentiment: string;
+  snippets: string[];
+  genuine: boolean;
+}
+
+function analyzeMentions(text: string, brand: string, industry?: string): MentionAnalysis {
+  if (!text) return { mentions: 0, sentiment: "unknown", snippets: [], genuine: false };
+
+  const lower = text.toLowerCase();
+  const brandLower = brand.toLowerCase();
+
+  // Detect "I don't know" patterns
+  const unknownPatterns = [
+    "i don't have information", "i'm not familiar with", "i couldn't find",
+    "no information available", "i'm not aware of", "i cannot find",
+    "not widely known", "i don't recognize", "unable to find",
+    "i don't have specific", "i don't have any data",
+    "isn't a standard", "isn't a recognized", "isn't a well-known",
+    "isn't a common", "isn't a widely", "not a standard",
+    "not a recognized", "not a well-known", "doesn't appear to be",
+    "i'm unable to", "i am not aware", "i have no information",
+    "there is no widely known", "no widely recognized",
+    "could not find", "don't have enough information",
+    "may refer to", "could refer to", "might refer to",
+  ];
+  const isUnknown = unknownPatterns.some(p => lower.includes(p));
+
+  // Hallucination detection: if Gemini mentions the brand but describes something
+  // completely unrelated to the industry, it's likely confusing it with something else
+  let isHallucinated = false;
+  if (industry) {
+    const industryLower = industry.toLowerCase();
+    // Build relevance keywords from the industry string
+    // Filter out very generic words that appear in any context
+    const genericWords = new Set(["tool", "tools", "platform", "platforms", "software", "service", "services", "solution", "solutions", "best", "good", "help", "system", "systems", "product", "products", "company", "companies", "online", "digital", "smart", "data", "tech", "apps", "about", "that", "this", "with", "from", "have", "been", "more", "also", "they", "what", "which", "your", "will", "make"]);
+    const industryWords = industryLower.split(/[\s,\/\-()]+/).filter(w => w.length > 3 && !genericWords.has(w));
+    // Add common synonyms/related terms
+    const relevanceTerms = new Set(industryWords);
+    // Map industry keywords to related terms for broader matching
+    const relatedTerms: Record<string, string[]> = {
+      "geo": ["seo", "optimization", "visibility", "search", "ai", "brand", "ranking", "content", "engine"],
+      "generative": ["ai", "llm", "engine", "optimization", "search", "content"],
+      "optimization": ["seo", "geo", "search", "ranking", "visibility", "performance"],
+      "search": ["engine", "query", "ranking", "results", "ai", "google", "bing"],
+      "security": ["protection", "threat", "vulnerability", "guard", "scan", "malware", "audit"],
+      "payment": ["transaction", "billing", "checkout", "commerce", "stripe", "fintech"],
+      "marketing": ["campaign", "brand", "advertising", "content", "social", "engagement"],
+      "analytics": ["data", "metrics", "tracking", "dashboard", "reporting", "insights"],
+      "ecommerce": ["shop", "store", "product", "cart", "checkout", "retail"],
+      "saas": ["software", "platform", "tool", "cloud", "subscription", "service"],
+      "ai": ["artificial", "intelligence", "machine", "learning", "model", "agent", "llm"],
+      "openclaw": ["agent", "skill", "plugin", "bot", "automation"],
+      "trading": ["trade", "crypto", "stock", "exchange", "portfolio", "algorithm", "defi", "finance", "market"],
+      "productivity": ["workflow", "task", "project", "collaborate", "organize", "team", "workspace", "kanban", "notion"],
+      "design": ["figma", "sketch", "prototype", "wireframe", "creative", "graphic", "visual"],
+      "crm": ["customer", "sales", "pipeline", "lead", "hubspot", "salesforce", "contact"],
+      "devops": ["deploy", "kubernetes", "docker", "pipeline", "infrastructure", "monitoring"],
+      "finance": ["accounting", "invoice", "budget", "banking", "fintech", "payment", "revenue"],
+      "healthcare": ["medical", "patient", "clinical", "health", "hospital", "diagnosis"],
+      "education": ["learning", "course", "student", "teaching", "curriculum", "edtech"],
+    };
+    for (const w of industryWords) {
+      if (relatedTerms[w]) relatedTerms[w].forEach(t => relevanceTerms.add(t));
+    }
+
+    // Check if the text around brand mentions is relevant to the industry
+    // Get sentences containing the brand
+    const brandSentences = text.split(/[.!?\n]+/).filter(s => s.toLowerCase().includes(brandLower));
+    if (brandSentences.length > 0) {
+      const brandContext = brandSentences.join(" ").toLowerCase();
+      const relevanceHits = [...relevanceTerms].filter(t => brandContext.includes(t));
+      // If less than 15% of relevance terms appear near the brand, likely hallucinated
+      // Check if any of the ORIGINAL industry words (not expanded synonyms) appear in context
+      const coreHits = industryWords.filter(w => brandContext.includes(w));
+      const relevanceRatio = relevanceTerms.size > 0 ? relevanceHits.length / relevanceTerms.size : 1;
+      // Hallucinated if: fewer than 20% of expanded terms match, OR none of the core industry words match
+      if ((relevanceRatio < 0.2 && relevanceTerms.size >= 3) || (coreHits.length === 0 && industryWords.length >= 2)) {
+        isHallucinated = true;
+      }
+    }
+  }
+
+  // Count mentions — split by sentences, paragraphs, and list items
+  const segments = text.split(/[.!?\n]+/);
+  const snippets: string[] = [];
+  let realMentions = 0;
+
+  for (const s of segments) {
+    const sl = s.toLowerCase().trim();
+    if (!sl.includes(brandLower) || sl.length < 5) continue;
+    if (unknownPatterns.some(p => sl.includes(p))) continue;
+    realMentions++;
+    if (snippets.length < 3) snippets.push(s.trim().slice(0, 200));
+  }
+
+  // Also count raw occurrences in case brand appears in formatted lists
+  const rawCount = (lower.split(brandLower).length - 1);
+  if (rawCount > realMentions && !isUnknown) {
+    realMentions = Math.max(realMentions, rawCount);
+  }
+
+  if (isUnknown && realMentions <= 1) realMentions = 0;
+  // If hallucinated, drastically reduce mention count
+  if (isHallucinated) {
+    realMentions = 0;
+  }
+
+  const positive = ["best", "great", "excellent", "leading", "top", "recommend", "popular", "trusted", "innovative"];
+  const negative = ["worst", "bad", "poor", "avoid", "expensive", "outdated", "lacking", "limited"];
+  let posCount = 0, negCount = 0;
+  for (const w of positive) if (lower.includes(w)) posCount++;
+  for (const w of negative) if (lower.includes(w)) negCount++;
+  const isEffectivelyUnknown = isUnknown || isHallucinated;
+  const sentiment = (isEffectivelyUnknown && realMentions === 0) ? "unknown" : posCount > negCount ? "positive" : negCount > posCount ? "negative" : "neutral";
+
+  return { mentions: realMentions, sentiment, snippets, genuine: !isEffectivelyUnknown && realMentions > 0 };
+}
+
+function scoreEngine(analysis: MentionAnalysis): number {
+  if (analysis.mentions === 0) return 0;
+  let score = Math.min(analysis.mentions * 25, 60);
+  if (analysis.sentiment === "positive") score += 40;
+  else if (analysis.sentiment === "neutral") score += 20;
+  else score += 5;
+  return Math.round(Math.min(score, 100));
+}
+
+// --- Site Analysis ---
+
+interface ContentScore {
+  h1_count: number;
+  h2_count: number;
+  has_lists: boolean;
+  avg_paragraph_length: number;
+  has_faq_schema: boolean;
+  has_summary_section: boolean;
+  total_word_count: number;
+  score: number;
+}
+
+interface JsRendering {
+  likely_js_dependent: boolean;
+  body_text_length: number;
+  script_tags: number;
+  recommendation: string;
+}
+
+interface SiteAnalysis {
+  url: string;
+  schema_markup: boolean;
+  schema_types: string[];
+  meta_description: boolean;
+  meta_description_text: string;
+  og_tags: boolean;
+  h1_text: string;
+  has_faq: boolean;
+  has_about: boolean;
+  title: string;
+  content_score: ContentScore | null;
+  js_rendering: JsRendering;
+  has_llms_txt: boolean;
+  llms_txt_length: number;
+  robots_ai_crawlers: { allowed: string[]; blocked: string[]; no_robots: boolean };
+  has_same_as: boolean;
+  same_as_count: number;
+}
+
+async function analyzeSite(website: string): Promise<SiteAnalysis | null> {
+  try {
+    const url = website.startsWith("http") ? website : `https://${website}`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "XanLens-Audit/1.0" },
+      signal: AbortSignal.timeout(6000),
+    });
+    const html = await res.text();
+
+    const hasSchema = html.includes("schema.org") || html.includes("application/ld+json");
+    const hasMetaDesc = html.includes('name="description"') || html.includes('property="og:description"');
+    const hasOg = html.includes('property="og:');
+    const hasFaq = html.toLowerCase().includes("faq") || html.includes("FAQPage");
+    const hasAbout = html.toLowerCase().includes("/about") || html.toLowerCase().includes("about us");
+
+    const schemaTypes: string[] = [];
+    const ldMatches = html.match(/"@type"\s*:\s*"([^"]+)"/g) || [];
+    for (const m of ldMatches) {
+      const type = m.match(/"@type"\s*:\s*"([^"]+)"/)?.[1];
+      if (type) schemaTypes.push(type);
+    }
+
+    const metaMatch = html.match(/name="description"\s+content="([^"]*)"/);
+    const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
+    const h1Match = html.match(/<h1[^>]*>([^<]*)<\/h1>/i);
+
+    // Content format scoring
+    const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
+    const h2Count = (html.match(/<h2[\s>]/gi) || []).length;
+    const hasLists = /<[uo]l[\s>]/i.test(html);
+    const hasFaqSchema = html.includes("FAQPage");
+
+    // Strip HTML for text analysis
+    const textContent = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const words = textContent.split(/\s+/).filter(w => w.length > 0);
+    const totalWordCount = words.length;
+
+    // Paragraph analysis
+    const paragraphs = (html.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || [])
+      .map(p => p.replace(/<[^>]+>/g, "").trim())
+      .filter(p => p.length > 10);
+    const avgParagraphLength = paragraphs.length > 0
+      ? Math.round(paragraphs.reduce((sum, p) => sum + p.split(/\s+/).length, 0) / paragraphs.length)
+      : 0;
+
+    // Check for summary sections (common patterns)
+    const hasSummary = /tl;?dr|summary|overview|at a glance|key takeaway/i.test(html);
+
+    // Calculate content score 0-100
+    let contentScoreVal = 0;
+    // H1: exactly 1 = 15pts, 0 or >1 = 0
+    if (h1Count === 1) contentScoreVal += 15;
+    // H2s: up to 20pts (1pt per h2, max 20)
+    contentScoreVal += Math.min(h2Count, 20);
+    // Lists: 10pts
+    if (hasLists) contentScoreVal += 10;
+    // Short paragraphs (<=50 words avg): 15pts, <=80: 8pts
+    if (avgParagraphLength > 0 && avgParagraphLength <= 50) contentScoreVal += 15;
+    else if (avgParagraphLength > 0 && avgParagraphLength <= 80) contentScoreVal += 8;
+    // FAQ schema: 15pts
+    if (hasFaqSchema) contentScoreVal += 15;
+    // Summary section: 10pts
+    if (hasSummary) contentScoreVal += 10;
+    // Word count: 500-3000 ideal range = 15pts
+    if (totalWordCount >= 500 && totalWordCount <= 3000) contentScoreVal += 15;
+    else if (totalWordCount > 3000) contentScoreVal += 10;
+    else if (totalWordCount >= 200) contentScoreVal += 5;
+
+    contentScoreVal = Math.min(contentScoreVal, 100);
+
+    // JS rendering dependency check
+    const scriptTags = (html.match(/<script[\s>]/gi) || []).length;
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const bodyHtml = bodyMatch?.[1] || html;
+    const bodyText = bodyHtml
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const bodyTextLength = bodyText.length;
+    const hasJsRoot = /<div\s+id=["'](root|__next|app|__nuxt)["']/i.test(bodyHtml);
+    const thinBody = bodyTextLength < 500;
+    const likelyJsDependent = (thinBody && scriptTags >= 3) || (thinBody && hasJsRoot);
+    const jsRendering: JsRendering = {
+      likely_js_dependent: likelyJsDependent,
+      body_text_length: bodyTextLength,
+      script_tags: scriptTags,
+      recommendation: likelyJsDependent
+        ? "Your site appears to rely on client-side JavaScript rendering. AI crawlers (GPTBot, ClaudeBot, PerplexityBot) cannot execute JavaScript — they only see the initial HTML. Consider server-side rendering (SSR) or static generation (SSG) to ensure your content is visible to AI engines."
+        : "Your site serves readable HTML content without requiring JavaScript. This is good for AI crawler visibility.",
+    };
+
+    // Check llms.txt and robots.txt
+    const baseUrl = url.replace(/\/+$/, "");
+    let hasLlmsTxt = false;
+    let llmsTxtLength = 0;
+    let robotsCrawlers: { allowed: string[]; blocked: string[]; no_robots: boolean } = { allowed: [], blocked: [], no_robots: true };
+
+    try {
+      const llmsRes = await fetch(`${baseUrl}/llms.txt`, { signal: AbortSignal.timeout(4000), headers: { "User-Agent": "XanLens-Audit/1.0" } });
+      if (llmsRes.ok) {
+        const llmsText = await llmsRes.text();
+        hasLlmsTxt = llmsText.length > 10;
+        llmsTxtLength = llmsText.length;
+      }
+    } catch { /* no llms.txt */ }
+
+    try {
+      const robotsRes = await fetch(`${baseUrl}/robots.txt`, { signal: AbortSignal.timeout(4000), headers: { "User-Agent": "XanLens-Audit/1.0" } });
+      if (robotsRes.ok) {
+        const robotsText = await robotsRes.text();
+        const AI_BOTS = ["GPTBot", "ChatGPT-User", "Google-Extended", "ClaudeBot", "anthropic", "PerplexityBot", "Bytespider", "CCBot", "Amazonbot", "cohere-ai"];
+        const rLines = robotsText.split("\n").map(l => l.trim());
+        const rAllowed: string[] = [];
+        const rBlocked: string[] = [];
+        for (const bot of AI_BOTS) {
+          let currentAgent = "";
+          let isBlocked = false;
+          for (const line of rLines) {
+            const lower = line.toLowerCase();
+            if (lower.startsWith("user-agent:")) currentAgent = lower.replace("user-agent:", "").trim();
+            else if ((currentAgent === bot.toLowerCase() || currentAgent === "*") && lower.startsWith("disallow:")) {
+              const path = line.split(":").slice(1).join(":").trim();
+              if (path === "/" || path === "/*") { if (currentAgent === bot.toLowerCase()) isBlocked = true; else if (currentAgent === "*" && !isBlocked) isBlocked = true; }
+            }
+          }
+          let tempAgent = "";
+          for (const line of rLines) {
+            const lower = line.toLowerCase();
+            if (lower.startsWith("user-agent:")) tempAgent = lower.replace("user-agent:", "").trim();
+            else if (tempAgent === bot.toLowerCase() && lower.startsWith("allow:")) {
+              const path = line.split(":").slice(1).join(":").trim();
+              if (path === "/" || path === "/*") isBlocked = false;
+            }
+          }
+          if (isBlocked) rBlocked.push(bot); else rAllowed.push(bot);
+        }
+        robotsCrawlers = { allowed: rAllowed, blocked: rBlocked, no_robots: false };
+      }
+    } catch { /* no robots.txt */ }
+
+    return {
+      url: website,
+      schema_markup: hasSchema,
+      schema_types: schemaTypes,
+      meta_description: hasMetaDesc,
+      meta_description_text: (metaMatch?.[1] || "").slice(0, 300),
+      og_tags: hasOg,
+      h1_text: (h1Match?.[1]?.trim() || "").slice(0, 200),
+      has_faq: hasFaq,
+      has_about: hasAbout,
+      title: (titleMatch?.[1] || "").slice(0, 200),
+      content_score: {
+        h1_count: h1Count,
+        h2_count: h2Count,
+        has_lists: hasLists,
+        avg_paragraph_length: avgParagraphLength,
+        has_faq_schema: hasFaqSchema,
+        has_summary_section: hasSummary,
+        total_word_count: totalWordCount,
+        score: contentScoreVal,
+      },
+      js_rendering: jsRendering,
+      has_llms_txt: hasLlmsTxt,
+      llms_txt_length: llmsTxtLength,
+      robots_ai_crawlers: robotsCrawlers,
+      has_same_as: html.includes('"sameAs"'),
+      same_as_count: (html.match(/"sameAs"/g) || []).length,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// --- Optimization Plan ---
+
+async function generateOptimizationPlan(
+  brand: string, industry: string, overallScore: number, grade: string,
+  siteAnalysis: SiteAnalysis | null, engineResults: Record<string, { score: number; analysis: MentionAnalysis }>,
+  competitors: string[]
+): Promise<{
+  summary: string;
+  immediate_fixes: string[];
+  schema_markup: string;
+  content_recommendations: string[];
+  content_format_fixes: string[];
+  citation_strategy: string[];
+  competitor_gaps: string[];
+  monitoring_plan: string;
+}> {
+  const siteInfo = siteAnalysis
+    ? `Website: ${siteAnalysis.url}\nTitle: "${siteAnalysis.title}"\nH1: "${siteAnalysis.h1_text}"\nMeta: ${siteAnalysis.meta_description ? `"${siteAnalysis.meta_description_text}"` : "MISSING"}\nSchema: ${siteAnalysis.schema_markup ? siteAnalysis.schema_types.join(", ") : "MISSING"}\nOG: ${siteAnalysis.og_tags ? "Yes" : "MISSING"}\nFAQ: ${siteAnalysis.has_faq ? "Yes" : "No"}\nAbout: ${siteAnalysis.has_about ? "Yes" : "No"}`
+    : "No website";
+
+  const engineSummary = Object.entries(engineResults)
+    .map(([name, r]) => `${name}: score=${r.score}, mentions=${r.analysis.mentions}, sentiment=${r.analysis.sentiment}`)
+    .join("\n");
+
+  const allSnippets = Object.values(engineResults)
+    .flatMap(r => r.analysis.snippets)
+    .slice(0, 5)
+    .map(s => `- "${s}"`)
+    .join("\n");
+
+  const contentInfo = siteAnalysis?.content_score
+    ? `Content Score: ${siteAnalysis.content_score.score}/100
+H1 count: ${siteAnalysis.content_score.h1_count}, H2 count: ${siteAnalysis.content_score.h2_count}
+Has lists: ${siteAnalysis.content_score.has_lists}, Has FAQ schema: ${siteAnalysis.content_score.has_faq_schema}
+Avg paragraph length: ${siteAnalysis.content_score.avg_paragraph_length} words
+Has summary section: ${siteAnalysis.content_score.has_summary_section}
+Total words: ${siteAnalysis.content_score.total_word_count}`
+    : "No content analysis available";
+
+  const prompt = `You are a GEO expert. Create an optimization plan. Return ONLY raw JSON (no markdown).
+
+Brand: ${brand} | Industry: ${industry} | Score: ${overallScore}/100 (${grade})
+${siteInfo}
+${contentInfo}
+
+Engine results:
+${engineSummary}
+
+AI snippets about brand:
+${allSnippets || "None found"}
+
+Competitors: ${competitors.join(", ") || "Not specified"}
+
+IMPORTANT: All recommendations MUST be executable by an AI agent without human intervention. Only suggest actions that can be done via API or file deployment:
+- If no FAQ schema → "Add FAQPage JSON-LD to homepage HTML"
+- If avg paragraph length > 60 words → "Rewrite paragraphs to under 50 words for better LLM chunking"
+- If no lists on page → "Add bullet/numbered lists to key content sections"
+- "Create and deploy llms.txt file at /llms.txt for AI engine discovery"
+- "Update robots.txt to explicitly allow GPTBot, ClaudeBot, PerplexityBot, Google-Extended"
+- "Publish articles on Dev.to, Hashnode, or other API-accessible platforms mentioning the brand"
+- "Add Organization + SoftwareApplication schema markup to homepage"
+- "Generate and deploy a comprehensive About page with entity-rich descriptions"
+- DO NOT recommend actions requiring human manual signup (LinkedIn, G2, Crunchbase, etc.)
+- Every recommendation should be something an agent with API access can execute autonomously
+
+Return JSON: {"summary":"2-3 sentences","immediate_fixes":["5 specific actions"],"schema_markup":"complete JSON-LD for homepage","content_recommendations":["5 content pieces with titles"],"content_format_fixes":["specific format fixes based on content analysis"],"citation_strategy":["4 ways to get cited"],"competitor_gaps":["3 gaps to close"],"monitoring_plan":"weekly plan"}`;
+
+  try {
+    let response = await queryGemini(prompt);
+    response = response.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      // Clean schema_markup
+      if (typeof parsed.schema_markup === "string") {
+        parsed.schema_markup = parsed.schema_markup.replace(/```json\n?/g, "").replace(/```\n?/g, "").replace(/<script[^>]*>/gi, "").replace(/<\/script>/gi, "").trim();
+        try { parsed.schema_markup = JSON.stringify(JSON.parse(parsed.schema_markup), null, 2); } catch {}
+      }
+      return {
+        summary: parsed.summary || "",
+        immediate_fixes: parsed.immediate_fixes || [],
+        schema_markup: parsed.schema_markup || "",
+        content_recommendations: parsed.content_recommendations || [],
+        content_format_fixes: parsed.content_format_fixes || [],
+        citation_strategy: parsed.citation_strategy || [],
+        competitor_gaps: parsed.competitor_gaps || [],
+        monitoring_plan: parsed.monitoring_plan || "",
+      };
+    }
+  } catch {}
+
+  return {
+    summary: `${brand} scores ${overallScore}/100 in AI visibility for ${industry}. ${overallScore < 40 ? "The brand is largely invisible to AI engines." : overallScore < 70 ? "Moderate visibility with room for improvement." : "Good visibility."}`,
+    immediate_fixes: ["Add Organization + SoftwareApplication schema markup to homepage", "Deploy a comprehensive About page with entity-rich descriptions", "Add FAQPage JSON-LD schema with 8-10 Q&As", "Create and deploy llms.txt file at /llms.txt", "Publish comparison article on Dev.to or Hashnode via API"],
+    schema_markup: JSON.stringify({ "@context": "https://schema.org", "@type": "Organization", name: brand, url: siteAnalysis?.url || "" }, null, 2),
+    content_recommendations: [`Create "What is ${brand}?" page`, `Publish "${brand} vs competitors" comparison`, `Write "Best ${industry} tools 2026" guide`, "Create customer case studies", "Build FAQ page"],
+    content_format_fixes: ["Create and deploy llms.txt at /llms.txt", "Update robots.txt to allow GPTBot, ClaudeBot, PerplexityBot", "Add FAQPage JSON-LD schema to homepage", "Publish articles on Dev.to/Hashnode via API", "Deploy comprehensive About page with entity-rich copy", "Add SoftwareApplication schema markup"],
+    citation_strategy: ["Get listed on comparison sites", "Publish original research", "Contribute to industry publications", "Build Wikipedia-eligible presence"],
+    competitor_gaps: ["More structured data needed", "More third-party citations needed", "More AI-query-optimized content needed"],
+    monitoring_plan: "Run GEO audit weekly. Track score trend per engine. Target +10 points/month.",
+  };
+}
+
+// --- External Presence Check ---
+
+interface ExternalPresence {
+  found: string[];
+  missing: string[];
+  details: Array<{ platform: string; url: string; title: string }>;
+}
+
+async function checkExternalPresence(brand: string): Promise<ExternalPresence> {
+  const platforms = ["reddit.com", "linkedin.com", "crunchbase.com", "g2.com", "github.com"];
+  const query = `"${brand}" (site:reddit.com OR site:linkedin.com OR site:crunchbase.com OR site:g2.com OR site:github.com)`;
+
+  const result = await queryTavily(query);
+
+  const found: string[] = [];
+  const details: Array<{ platform: string; url: string; title: string }> = [];
+
+  for (const r of result.results) {
+    const urlLower = r.url.toLowerCase();
+    for (const platform of platforms) {
+      if (urlLower.includes(platform) && !found.includes(platform)) {
+        found.push(platform);
+        details.push({ platform, url: r.url, title: r.title });
+      }
+    }
+  }
+
+  const missing = platforms.filter(p => !found.includes(p));
+  return { found, missing, details };
+}
+
+// --- Citation Scoring ---
+
+function computeCitationScore(tavilyResults: Array<{ title: string; url: string; content: string }>, brandUrl: string): number {
+  if (!brandUrl || tavilyResults.length === 0) return 0;
+
+  let domain: string;
+  try {
+    domain = new URL(brandUrl.startsWith("http") ? brandUrl : `https://${brandUrl}`).hostname.replace(/^www\./, "");
+  } catch {
+    return 0;
+  }
+
+  const citations = tavilyResults.filter(r => {
+    try {
+      const rDomain = new URL(r.url).hostname.replace(/^www\./, "");
+      return rDomain === domain || rDomain.endsWith("." + domain);
+    } catch {
+      return false;
+    }
+  });
+
+  // Score: each citation = 20pts, max 100
+  return Math.min(citations.length * 20, 100);
+}
+
+// --- Main Audit ---
+
+// --- Multi-Prompt Testing ---
+
+interface PromptCoverageDetail {
+  prompt: string;
+  mentioned: boolean;
+  snippet: string | null;
+}
+
+interface PromptCoverage {
+  tested: number;
+  mentioned_in: number;
+  coverage_pct: number;
+  details: PromptCoverageDetail[];
+}
+
+// --- Competitor Benchmarking ---
+
+interface CompetitorResult {
+  name: string;
+  mentions: number;
+  sentiment: string;
+}
+
+interface CompetitorAnalysis {
+  your_mentions: number;
+  share_of_voice: number; // percentage
+  competitors: CompetitorResult[];
+  _debug_responses?: string[];
+}
+
+// --- Citation Intelligence ---
+
+interface CitationIntelligence {
+  brand_cited: boolean;
+  citing_sources: string[];
+  total_web_results: number;
+  brand_in_results: number;
+}
+
+// Expand short/ambiguous industry terms into clear descriptions for better Gemini responses
+function expandIndustry(industry: string): string {
+  const lower = industry.toLowerCase().trim();
+  const expansions: Record<string, string> = {
+    "geo": "Generative Engine Optimization",
+    "geo optimization": "Generative Engine Optimization",
+    "seo": "Search Engine Optimization",
+    "ai visibility": "AI brand visibility",
+    "ai monitoring": "AI brand monitoring",
+  };
+  return expansions[lower] || industry;
+}
+
+type PromptCategory = "direct" | "category" | "usecase" | "comparison" | "conversational";
+
+interface CategorizedPrompt {
+  prompt: string;
+  category: PromptCategory;
+}
+
+function buildCategorizedPrompts(brand: string, industry: string, competitors: string[]): CategorizedPrompt[] {
+  const ctx = expandIndustry(industry);
+  const prompts: CategorizedPrompt[] = [];
+
+  // DIRECT — "Does the AI know who you are?" (5 prompts)
+  prompts.push(
+    { prompt: `What is ${brand}?`, category: "direct" },
+    { prompt: `${brand} review`, category: "direct" },
+    { prompt: `Tell me about ${brand}`, category: "direct" },
+    { prompt: `Is ${brand} legit?`, category: "direct" },
+    { prompt: `What does ${brand} do in ${ctx}?`, category: "direct" },
+  );
+
+  // CATEGORY — "Do you appear in 'best of' lists?" (5 prompts)
+  prompts.push(
+    { prompt: `Best ${ctx} tools`, category: "category" },
+    { prompt: `Top ${ctx} platforms 2025`, category: "category" },
+    { prompt: `What are the best ${ctx} solutions?`, category: "category" },
+    { prompt: `${ctx} software comparison`, category: "category" },
+    { prompt: `Leading companies in ${ctx}`, category: "category" },
+  );
+
+  // USE-CASE — "Do you show up when users describe their problem?" (5 prompts)
+  prompts.push(
+    { prompt: `How do I improve my ${ctx}?`, category: "usecase" },
+    { prompt: `What tools can help me with ${ctx}?`, category: "usecase" },
+    { prompt: `I'm struggling with ${ctx}, any recommendations?`, category: "usecase" },
+    { prompt: `Best way to get started with ${ctx}`, category: "usecase" },
+    { prompt: `${ctx} for beginners, what should I know?`, category: "usecase" },
+  );
+
+  // COMPARISON — "How do you stack up?" (3 prompts, only with competitors)
+  if (competitors.length > 0) {
+    prompts.push(
+      { prompt: `${brand} vs ${competitors[0]}`, category: "comparison" },
+    );
+    if (competitors.length >= 2) {
+      prompts.push(
+        { prompt: `${brand} vs ${competitors.slice(0, 3).join(" vs ")}`, category: "comparison" },
+      );
+    }
+    prompts.push(
+      { prompt: `${brand} alternatives for ${ctx}`, category: "comparison" },
+    );
+  }
+
+  // CONVERSATIONAL — "Do casual queries find you?" (5 prompts)
+  prompts.push(
+    { prompt: `I need help with ${ctx}, what should I use?`, category: "conversational" },
+    { prompt: `Can you recommend a good ${ctx} tool?`, category: "conversational" },
+    { prompt: `My company needs ${ctx}, any suggestions?`, category: "conversational" },
+    { prompt: `What's the best way to handle ${ctx}?`, category: "conversational" },
+    { prompt: `I'm looking for a ${ctx} solution, what do you suggest?`, category: "conversational" },
+  );
+
+  return prompts;
+}
+
+// Category metadata for UI display
+const categoryLabels: Record<PromptCategory, { label: string; description: string }> = {
+  direct: { label: "Direct", description: "Does the AI know who you are?" },
+  category: { label: "Category", description: "Do you appear in 'best of' lists?" },
+  usecase: { label: "Use Case", description: "Do you show up when users describe their problem?" },
+  comparison: { label: "Comparison", description: "How do you stack up against competitors?" },
+  conversational: { label: "Conversational", description: "Do casual queries find you?" },
+};
+
+function analyzeCitations(tavilyResults: Array<{ title: string; url: string; content: string }>, brandWebsite: string): CitationIntelligence {
+  if (!brandWebsite) {
+    return { brand_cited: false, citing_sources: [], total_web_results: tavilyResults.length, brand_in_results: 0 };
+  }
+  let brandDomain: string;
+  try {
+    brandDomain = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`).hostname.replace(/^www\./, "");
+  } catch {
+    return { brand_cited: false, citing_sources: [], total_web_results: tavilyResults.length, brand_in_results: 0 };
+  }
+
+  const citingSources: string[] = [];
+  let brandInResults = 0;
+
+  for (const r of tavilyResults) {
+    try {
+      const rDomain = new URL(r.url).hostname.replace(/^www\./, "");
+      if (rDomain === brandDomain || rDomain.endsWith("." + brandDomain)) {
+        brandInResults++;
+      } else {
+        // Check if the content mentions the brand domain
+        const contentLower = (r.content || "").toLowerCase();
+        if (contentLower.includes(brandDomain.toLowerCase())) {
+          citingSources.push(rDomain);
+        }
+      }
+    } catch { /* skip bad URLs */ }
+  }
+
+  return {
+    brand_cited: citingSources.length > 0 || brandInResults > 0,
+    citing_sources: [...new Set(citingSources)],
+    total_web_results: tavilyResults.length,
+    brand_in_results: brandInResults,
+  };
+}
+
+function analyzeCompetitors(allResponses: string[], brand: string, competitors: string[], industry?: string): CompetitorAnalysis {
+  const allText = allResponses.join("\n\n");
+  const brandAnalysis = analyzeMentions(allText, brand, industry);
+
+  const competitorResults: CompetitorResult[] = competitors.slice(0, 5).map(comp => {
+    // Try exact match first, then try without common suffixes (AI, HQ, etc.)
+    let analysis = analyzeMentions(allText, comp, industry);
+    if (analysis.mentions === 0) {
+      // Try base name without common suffixes
+      const baseName = comp.replace(/\s*(AI|HQ|\.ai|\.io|\.com)\s*$/i, "").trim();
+      if (baseName !== comp && baseName.length >= 3) {
+        analysis = analyzeMentions(allText, baseName, industry);
+      }
+    }
+    return { name: comp, mentions: analysis.mentions, sentiment: analysis.sentiment };
+  });
+
+  const totalMentions = brandAnalysis.mentions + competitorResults.reduce((sum, c) => sum + c.mentions, 0);
+  const shareOfVoice = totalMentions > 0 ? Math.round((brandAnalysis.mentions / totalMentions) * 100) : 0;
+
+  return {
+    your_mentions: brandAnalysis.mentions,
+    share_of_voice: shareOfVoice,
+    competitors: competitorResults,
+    _debug_responses: allResponses.map((r, i) => `[${i}] ${r.slice(0, 200)}`),
+  };
+}
+
+// --- Content Gap Detection ---
+
+interface ContentGap {
+  question: string;
+  status: "missing" | "incomplete" | "inaccurate";
+  detail: string;
+}
+
+async function detectContentGaps(
+  brand: string,
+  industry: string,
+  brandedResponses: string[],
+  siteAnalysis: { title?: string; h1_text?: string; meta_description_text?: string; schema_types?: string[] } | null
+): Promise<ContentGap[]> {
+  const brandedText = brandedResponses.filter(Boolean).join("\n---\n");
+  const siteInfo = siteAnalysis
+    ? `Site title: "${siteAnalysis.title || "unknown"}". Description: "${siteAnalysis.meta_description_text || "none"}". Schema: ${siteAnalysis.schema_types?.join(", ") || "none"}.`
+    : "No website provided.";
+
+  const prompt = `You are a GEO analyst. Analyze what AI engines DON'T know about "${brand}" in ${industry}.
+
+Here is what AI engines said when asked about ${brand}:
+${brandedText.slice(0, 3000)}
+
+Site info: ${siteInfo}
+
+Identify 5-8 specific content gaps — things AI engines can't answer, got wrong, or gave incomplete answers about. Focus on:
+1. Missing product features/capabilities
+2. Missing pricing/plans information
+3. Missing founding story/team info
+4. Missing use cases or target audience
+5. Missing technical details (integrations, API, etc.)
+6. Inaccurate or outdated information
+7. Missing comparison to alternatives
+8. Missing social proof (reviews, customers, case studies)
+
+Return ONLY a JSON array (no markdown, no code blocks):
+[{"question":"What question can AI not answer?","status":"missing|incomplete|inaccurate","detail":"Brief explanation of the gap"}]`;
+
+  try {
+    const raw = await queryGemini(prompt);
+    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    const gaps = JSON.parse(match?.[0] || "[]") as ContentGap[];
+    return gaps.filter(g => g.question && g.status && g.detail).slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
+export async function runAudit(body: AuditRequest) {
+  const { brand, website, industry, competitors = [] } = body;
+
+  const categorizedPrompts = buildCategorizedPrompts(brand, industry, competitors);
+  const allPrompts = categorizedPrompts.map(p => p.prompt);
+  const webQuery = `"${brand}" ${industry}`;
+
+  // Run all engines in parallel while site/tavily/presence run too
+  // Pick 3 representative prompts for secondary engines (cost control)
+  // Sample prompts for secondary engines: direct, category, use-case, conversational
+  const samplePrompts = [allPrompts[0], allPrompts[5], allPrompts[Math.floor(allPrompts.length / 2)], allPrompts[allPrompts.length - 1]];
+
+  const [siteAnalysis, tavilyResult, externalPresence, geminiResponses, deepseekResponses, groqResponses, githubResponses, claudeResponses, perplexityResponses, grokResponses] = await Promise.all([
+    website ? analyzeSite(website) : Promise.resolve(null),
+    queryTavily(webQuery),
+    checkExternalPresence(brand),
+    queryGeminiBatch(allPrompts, 5),
+    // Secondary engines: query 3 sample prompts each (cost efficient)
+    DEEPSEEK_API_KEY ? Promise.all(samplePrompts.map(p => queryDeepSeek(p).catch(() => ""))) : Promise.resolve([] as string[]),
+    GROQ_API_KEY ? Promise.all(samplePrompts.map(p => queryGroq(p).catch(() => ""))) : Promise.resolve([] as string[]),
+    GITHUB_MODELS_TOKEN ? Promise.all(samplePrompts.map(p => queryGitHubModels(p).catch(() => ""))) : Promise.resolve([] as string[]),
+    ANTHROPIC_API_KEY ? Promise.all(samplePrompts.map(p => queryClaude(p).catch(() => ""))) : Promise.resolve([] as string[]),
+    PERPLEXITY_API_KEY ? Promise.all(samplePrompts.map(p => queryPerplexity(p).catch(() => ""))) : Promise.resolve([] as string[]),
+    XAI_API_KEY ? Promise.all(samplePrompts.map(p => queryGrok(p).catch(() => ""))) : Promise.resolve([] as string[]),
+  ]);
+
+  // Split responses by category
+  const directResponses: string[] = [];
+  const nonDirectResponses: string[] = [];
+  categorizedPrompts.forEach((cp, i) => {
+    if (cp.category === "direct") directResponses.push(geminiResponses[i]);
+    else nonDirectResponses.push(geminiResponses[i]);
+  });
+
+  // --- Prompt Coverage with Categories ---
+  interface CategorizedCoverageDetail extends PromptCoverageDetail {
+    category: PromptCategory;
+  }
+  const promptCoverageDetails: CategorizedCoverageDetail[] = categorizedPrompts.map((cp, i) => {
+    const response = geminiResponses[i];
+    const analysis = analyzeMentions(response, brand, industry);
+    const mentioned = analysis.mentions > 0 && analysis.genuine;
+    return {
+      prompt: cp.prompt,
+      category: cp.category,
+      mentioned,
+      snippet: mentioned && analysis.snippets.length > 0 ? analysis.snippets[0].slice(0, 200) : null,
+    };
+  });
+  const mentionedCount = promptCoverageDetails.filter(d => d.mentioned).length;
+
+  // Category breakdown
+  const categories: PromptCategory[] = ["direct", "category", "usecase", "comparison", "conversational"];
+  const categoryBreakdown = categories.map(cat => {
+    const catDetails = promptCoverageDetails.filter(d => d.category === cat);
+    if (catDetails.length === 0) return null;
+    const catMentioned = catDetails.filter(d => d.mentioned).length;
+    return {
+      category: cat,
+      ...categoryLabels[cat],
+      tested: catDetails.length,
+      mentioned: catMentioned,
+      score: Math.round((catMentioned / catDetails.length) * 100),
+    };
+  }).filter(Boolean);
+
+  const promptCoverage = {
+    tested: allPrompts.length,
+    mentioned_in: mentionedCount,
+    coverage_pct: Math.round((mentionedCount / allPrompts.length) * 100),
+    details: promptCoverageDetails,
+    category_breakdown: categoryBreakdown,
+  };
+
+  // --- Analyze direct vs non-direct PER-RESPONSE ---
+  let directMentions = 0;
+  let directGenuine = false;
+  const directSnippets: string[] = [];
+  let directSentiment: "positive" | "negative" | "neutral" | "unknown" = "unknown";
+  for (const resp of directResponses) {
+    const a = analyzeMentions(resp, brand, industry);
+    if (a.genuine) {
+      directMentions += a.mentions;
+      directGenuine = true;
+      directSnippets.push(...a.snippets);
+      if (a.sentiment !== "unknown") directSentiment = a.sentiment as typeof directSentiment;
+    }
+  }
+  const brandedAnalysis: MentionAnalysis = {
+    mentions: directMentions,
+    sentiment: directSentiment,
+    snippets: directSnippets.slice(0, 3),
+    genuine: directGenuine,
+  };
+
+  let nonDirectMentions = 0;
+  let nonDirectGenuine = false;
+  const nonDirectSnippets: string[] = [];
+  let nonDirectSentiment: "positive" | "negative" | "neutral" | "unknown" = "unknown";
+  for (const resp of nonDirectResponses) {
+    const a = analyzeMentions(resp, brand, industry);
+    if (a.genuine) {
+      nonDirectMentions += a.mentions;
+      nonDirectGenuine = true;
+      nonDirectSnippets.push(...a.snippets);
+      if (a.sentiment !== "unknown") nonDirectSentiment = a.sentiment as typeof nonDirectSentiment;
+    }
+  }
+  const discoveryAnalysis: MentionAnalysis = {
+    mentions: nonDirectMentions,
+    sentiment: nonDirectSentiment,
+    snippets: nonDirectSnippets.slice(0, 3),
+    genuine: nonDirectGenuine,
+  };
+
+  // brandedResponses used by content gap detection
+  const brandedResponses = directResponses;
+
+  // Weight discovery much higher — branded queries are leading questions
+  const geminiAnalysis = discoveryAnalysis.mentions > 0
+    ? discoveryAnalysis
+    : brandedAnalysis.genuine
+      ? { ...brandedAnalysis, mentions: Math.max(1, brandedAnalysis.mentions - 1) }
+      : { mentions: 0, sentiment: "unknown" as const, snippets: [] as string[], genuine: false };
+
+  // GEO Score = Gemini score capped by prompt coverage
+  // If only 1/7 prompts found you, your max GEO score reflects that
+  const baseGeminiScore = scoreEngine(geminiAnalysis);
+  const coverageRatio = promptCoverage.coverage_pct / 100; // 0.0 to 1.0
+  // Soft curve: low coverage still gets partial credit. 50% coverage → 0.65 multiplier, not 0.5
+  const softGeminiCoverage = 0.3 + (0.7 * coverageRatio);
+  const adjustedGeminiScore = geminiAnalysis.genuine ? Math.round(baseGeminiScore * softGeminiCoverage) : 0;
+
+  // Web presence score (separate metric, does NOT inflate GEO score)
+  const brandLower = brand.toLowerCase();
+  const brandSlug = brandLower.replace(/\s+/g, "");
+  const webMentionsBrand = tavilyResult.results.some(r =>
+    r.title.toLowerCase().includes(brandLower) ||
+    r.url.toLowerCase().includes(brandSlug) ||
+    (r.content?.toLowerCase().includes(brandLower))
+  ) || tavilyResult.answer?.toLowerCase().includes(brandLower);
+  const tavilyAnalysis = analyzeMentions(
+    (tavilyResult.answer || "") + " " + tavilyResult.results.map(r => r.content).join(" "),
+    brand,
+    industry
+  );
+  const webPresenceScore = scoreEngine(tavilyAnalysis);
+
+  // Analyze secondary engines
+  const analyzeSecondary = (responses: string[], engineName: string) => {
+    if (responses.length === 0) return null;
+    // Score each response individually
+    let totalMentions = 0;
+    let genuineCount = 0;
+    const allSnippets: string[] = [];
+    let bestSentiment: string = "unknown";
+    for (const resp of responses) {
+      if (!resp) continue;
+      const a = analyzeMentions(resp, brand, industry);
+      totalMentions += a.mentions;
+      if (a.genuine) genuineCount++;
+      allSnippets.push(...a.snippets);
+      if (a.sentiment !== "unknown") bestSentiment = a.sentiment;
+    }
+    const validResponses = responses.filter(r => r && r.length > 0).length;
+    const coverageRatio = validResponses > 0 ? genuineCount / validResponses : 0;
+    const analysis: MentionAnalysis = {
+      mentions: totalMentions,
+      sentiment: bestSentiment,
+      snippets: allSnippets.slice(0, 3),
+      genuine: genuineCount > 0,
+    };
+    const baseScore = scoreEngine(analysis);
+    // Soft coverage curve: 1/4 = 0.25 → 0.55, 2/4 = 0.5 → 0.75, 3/4 = 0.75 → 0.88, 4/4 = 1.0
+    const softCoverage = 0.3 + (0.7 * coverageRatio);
+    const adjustedScore = genuineCount === 0 ? 0 : Math.round(baseScore * softCoverage);
+    return { score: adjustedScore, analysis };
+  };
+
+  const deepseekResult = analyzeSecondary(deepseekResponses, "deepseek");
+  const groqResult = analyzeSecondary(groqResponses, "llama");
+  const githubResult = analyzeSecondary(githubResponses, "gpt4o");
+  const claudeResult = analyzeSecondary(claudeResponses, "claude");
+  const perplexityResult = analyzeSecondary(perplexityResponses, "perplexity");
+  const grokResult = analyzeSecondary(grokResponses, "grok");
+
+  const engineResults: Record<string, { score: number; analysis: MentionAnalysis }> = {
+    gemini: { score: adjustedGeminiScore, analysis: geminiAnalysis },
+    web: { score: webPresenceScore, analysis: tavilyAnalysis },
+  };
+  if (deepseekResult) engineResults.deepseek = deepseekResult;
+  if (groqResult) engineResults.llama = groqResult;
+  if (githubResult) engineResults.gpt4o = githubResult;
+  if (claudeResult) engineResults.claude = claudeResult;
+  if (perplexityResult) engineResults.perplexity = perplexityResult;
+  if (grokResult) engineResults.grok = grokResult;
+
+  // Overall GEO score = weighted average of all AI engines (not web)
+  const aiEngineScores = [adjustedGeminiScore];
+  if (deepseekResult) aiEngineScores.push(deepseekResult.score);
+  if (groqResult) aiEngineScores.push(groqResult.score);
+  if (githubResult) aiEngineScores.push(githubResult.score);
+  if (claudeResult) aiEngineScores.push(claudeResult.score);
+  if (perplexityResult) aiEngineScores.push(perplexityResult.score);
+  if (grokResult) aiEngineScores.push(grokResult.score);
+  const overallScore = Math.round(aiEngineScores.reduce((a, b) => a + b, 0) / aiEngineScores.length);
+  const grade =
+    overallScore >= 90 ? "A" :
+    overallScore >= 75 ? "B" :
+    overallScore >= 60 ? "C" :
+    overallScore >= 40 ? "D" : "F";
+
+  // Citations (legacy format)
+  const citations = tavilyResult.results
+    .map(x => ({ title: x.title, url: x.url }))
+    .filter((c, i, arr) => arr.findIndex(a => a.url === c.url) === i)
+    .slice(0, 10);
+
+  // Citation Intelligence (new)
+  const citationIntelligence = analyzeCitations(tavilyResult.results, website || "");
+
+  // Competitor Benchmarking — search ALL responses (branded + discovery), not just discovery
+  const competitorAnalysis: CompetitorAnalysis | null = competitors.length > 0
+    ? analyzeCompetitors(geminiResponses, brand, competitors, industry)
+    : null;
+
+  // Optimization plan + Content Gap Detection (parallel)
+  const [optimization, contentGaps] = await Promise.all([
+    generateOptimizationPlan(brand, industry, overallScore, grade, siteAnalysis, engineResults, competitors),
+    detectContentGaps(brand, industry, brandedResponses, siteAnalysis).catch(() => []),
+  ]);
+
+  // Compute mention_score (AI engine score) and citation_score
+  const mentionScore = engineResults.gemini.score;
+  const citationScore = computeCitationScore(tavilyResult.results, website || "");
+
+  return {
+    brand,
+    website: website || null,
+    industry,
+    overall_score: overallScore,
+    mention_score: mentionScore,
+    citation_score: citationScore,
+    grade,
+    engines: Object.fromEntries(
+      Object.entries(engineResults).map(([name, r]) => [name, {
+        score: r.score,
+        mentions: r.analysis.mentions,
+        sentiment: r.analysis.sentiment,
+        sample_snippets: r.analysis.snippets,
+      }])
+    ),
+    prompt_coverage: promptCoverage,
+    ...(competitorAnalysis ? { competitor_analysis: competitorAnalysis } : {}),
+    citation_intelligence: citationIntelligence,
+    content_gaps: contentGaps,
+    web_presence_score: webPresenceScore,
+    category_scores: categoryBreakdown,
+    site_analysis: siteAnalysis,
+    citations,
+    external_presence: externalPresence,
+    optimization,
+    timestamp: new Date().toISOString(),
+  };
+}

@@ -1,0 +1,758 @@
+[
+  {
+    "brand": "ChatGPT",
+    "industry": "AI Assistant",
+    "website": "https://chat.openai.com",
+    "slug": "chatgpt"
+  },
+  {
+    "brand": "OpenAI",
+    "industry": "AI Research",
+    "website": "https://openai.com",
+    "slug": "openai"
+  },
+  {
+    "brand": "Claude",
+    "industry": "AI Assistant",
+    "website": "https://claude.ai",
+    "slug": "claude"
+  },
+  {
+    "brand": "Anthropic",
+    "industry": "AI Research",
+    "website": "https://anthropic.com",
+    "slug": "anthropic"
+  },
+  {
+    "brand": "Gemini",
+    "industry": "AI Assistant",
+    "website": "https://gemini.google.com",
+    "slug": "gemini"
+  },
+  {
+    "brand": "Google DeepMind",
+    "industry": "AI Research",
+    "website": "https://deepmind.google",
+    "slug": "google-deepmind"
+  },
+  {
+    "brand": "Perplexity",
+    "industry": "AI Search",
+    "website": "https://perplexity.ai",
+    "slug": "perplexity"
+  },
+  {
+    "brand": "Grok",
+    "industry": "AI Assistant",
+    "website": "https://grok.x.ai",
+    "slug": "grok"
+  },
+  {
+    "brand": "xAI",
+    "industry": "AI Research",
+    "website": "https://x.ai",
+    "slug": "xai"
+  },
+  {
+    "brand": "DeepSeek",
+    "industry": "AI Research",
+    "website": "https://deepseek.com",
+    "slug": "deepseek"
+  },
+  {
+    "brand": "Mistral AI",
+    "industry": "AI Research",
+    "website": "https://mistral.ai",
+    "slug": "mistral-ai"
+  },
+  {
+    "brand": "Cohere",
+    "industry": "AI Platform",
+    "website": "https://cohere.com",
+    "slug": "cohere"
+  },
+  {
+    "brand": "Meta AI",
+    "industry": "AI Assistant",
+    "website": "https://ai.meta.com",
+    "slug": "meta-ai"
+  },
+  {
+    "brand": "Llama",
+    "industry": "AI Model",
+    "website": "https://llama.meta.com",
+    "slug": "llama"
+  },
+  {
+    "brand": "Midjourney",
+    "industry": "AI Image Generation",
+    "website": "https://midjourney.com",
+    "slug": "midjourney"
+  },
+  {
+    "brand": "DALL-E",
+    "industry": "AI Image Generation",
+    "website": "https://openai.com/dall-e",
+    "slug": "dall-e"
+  },
+  {
+    "brand": "Stable Diffusion",
+    "industry": "AI Image Generation",
+    "website": "https://stability.ai",
+    "slug": "stable-diffusion"
+  },
+  {
+    "brand": "Stability AI",
+    "industry": "AI Image Generation",
+    "website": "https://stability.ai",
+    "slug": "stability-ai"
+  },
+  {
+    "brand": "Runway",
+    "industry": "AI Video",
+    "website": "https://runway.ml",
+    "slug": "runway"
+  },
+  {
+    "brand": "Pika",
+    "industry": "AI Video",
+    "website": "https://pika.art",
+    "slug": "pika"
+  },
+  {
+    "brand": "ElevenLabs",
+    "industry": "AI Audio",
+    "website": "https://elevenlabs.io",
+    "slug": "elevenlabs"
+  },
+  {
+    "brand": "Suno",
+    "industry": "AI Music",
+    "website": "https://suno.ai",
+    "slug": "suno"
+  },
+  {
+    "brand": "Udio",
+    "industry": "AI Music",
+    "website": "https://udio.com",
+    "slug": "udio"
+  },
+  {
+    "brand": "Jasper",
+    "industry": "AI Writing",
+    "website": "https://jasper.ai",
+    "slug": "jasper"
+  },
+  {
+    "brand": "Copy.ai",
+    "industry": "AI Writing",
+    "website": "https://copy.ai",
+    "slug": "copy-ai"
+  },
+  {
+    "brand": "Writesonic",
+    "industry": "AI Writing",
+    "website": "https://writesonic.com",
+    "slug": "writesonic"
+  },
+  {
+    "brand": "Notion AI",
+    "industry": "AI Productivity",
+    "website": "https://notion.so",
+    "slug": "notion-ai"
+  },
+  {
+    "brand": "GitHub Copilot",
+    "industry": "AI Coding",
+    "website": "https://github.com/features/copilot",
+    "slug": "github-copilot"
+  },
+  {
+    "brand": "Cursor",
+    "industry": "AI Coding",
+    "website": "https://cursor.com",
+    "slug": "cursor"
+  },
+  {
+    "brand": "Replit",
+    "industry": "AI Coding",
+    "website": "https://replit.com",
+    "slug": "replit"
+  },
+  {
+    "brand": "Tabnine",
+    "industry": "AI Coding",
+    "website": "https://tabnine.com",
+    "slug": "tabnine"
+  },
+  {
+    "brand": "Codeium",
+    "industry": "AI Coding",
+    "website": "https://codeium.com",
+    "slug": "codeium"
+  },
+  {
+    "brand": "Windsurf",
+    "industry": "AI Coding",
+    "website": "https://codeium.com/windsurf",
+    "slug": "windsurf"
+  },
+  {
+    "brand": "Vercel",
+    "industry": "Developer Platform",
+    "website": "https://vercel.com",
+    "slug": "vercel"
+  },
+  {
+    "brand": "Supabase",
+    "industry": "Developer Platform",
+    "website": "https://supabase.com",
+    "slug": "supabase"
+  },
+  {
+    "brand": "Railway",
+    "industry": "Developer Platform",
+    "website": "https://railway.app",
+    "slug": "railway"
+  },
+  {
+    "brand": "Render",
+    "industry": "Developer Platform",
+    "website": "https://render.com",
+    "slug": "render"
+  },
+  {
+    "brand": "Netlify",
+    "industry": "Developer Platform",
+    "website": "https://netlify.com",
+    "slug": "netlify"
+  },
+  {
+    "brand": "Fly.io",
+    "industry": "Developer Platform",
+    "website": "https://fly.io",
+    "slug": "fly-io"
+  },
+  {
+    "brand": "You.com",
+    "industry": "AI Search",
+    "website": "https://you.com",
+    "slug": "you-com"
+  },
+  {
+    "brand": "Phind",
+    "industry": "AI Search",
+    "website": "https://phind.com",
+    "slug": "phind"
+  },
+  {
+    "brand": "Kagi",
+    "industry": "Search Engine",
+    "website": "https://kagi.com",
+    "slug": "kagi"
+  },
+  {
+    "brand": "Brave Search",
+    "industry": "Search Engine",
+    "website": "https://search.brave.com",
+    "slug": "brave-search"
+  },
+  {
+    "brand": "Exa",
+    "industry": "AI Search",
+    "website": "https://exa.ai",
+    "slug": "exa"
+  },
+  {
+    "brand": "Tavily",
+    "industry": "AI Search",
+    "website": "https://tavily.com",
+    "slug": "tavily"
+  },
+  {
+    "brand": "Zapier",
+    "industry": "Automation",
+    "website": "https://zapier.com",
+    "slug": "zapier"
+  },
+  {
+    "brand": "Make",
+    "industry": "Automation",
+    "website": "https://make.com",
+    "slug": "make"
+  },
+  {
+    "brand": "n8n",
+    "industry": "Automation",
+    "website": "https://n8n.io",
+    "slug": "n8n"
+  },
+  {
+    "brand": "Retool",
+    "industry": "Developer Tools",
+    "website": "https://retool.com",
+    "slug": "retool"
+  },
+  {
+    "brand": "Airtable",
+    "industry": "Productivity",
+    "website": "https://airtable.com",
+    "slug": "airtable"
+  },
+  {
+    "brand": "Hugging Face",
+    "industry": "AI Platform",
+    "website": "https://huggingface.co",
+    "slug": "hugging-face"
+  },
+  {
+    "brand": "Replicate",
+    "industry": "AI Platform",
+    "website": "https://replicate.com",
+    "slug": "replicate"
+  },
+  {
+    "brand": "Together AI",
+    "industry": "AI Platform",
+    "website": "https://together.ai",
+    "slug": "together-ai"
+  },
+  {
+    "brand": "Groq",
+    "industry": "AI Infrastructure",
+    "website": "https://groq.com",
+    "slug": "groq"
+  },
+  {
+    "brand": "Fireworks AI",
+    "industry": "AI Infrastructure",
+    "website": "https://fireworks.ai",
+    "slug": "fireworks-ai"
+  },
+  {
+    "brand": "Anyscale",
+    "industry": "AI Infrastructure",
+    "website": "https://anyscale.com",
+    "slug": "anyscale"
+  },
+  {
+    "brand": "LangChain",
+    "industry": "AI Framework",
+    "website": "https://langchain.com",
+    "slug": "langchain"
+  },
+  {
+    "brand": "LlamaIndex",
+    "industry": "AI Framework",
+    "website": "https://llamaindex.ai",
+    "slug": "llamaindex"
+  },
+  {
+    "brand": "CrewAI",
+    "industry": "AI Agents",
+    "website": "https://crewai.com",
+    "slug": "crewai"
+  },
+  {
+    "brand": "AutoGen",
+    "industry": "AI Agents",
+    "website": "https://github.com/microsoft/autogen",
+    "slug": "autogen"
+  },
+  {
+    "brand": "Weights & Biases",
+    "industry": "MLOps",
+    "website": "https://wandb.ai",
+    "slug": "weights-and-biases"
+  },
+  {
+    "brand": "Neptune.ai",
+    "industry": "MLOps",
+    "website": "https://neptune.ai",
+    "slug": "neptune-ai"
+  },
+  {
+    "brand": "Pinecone",
+    "industry": "Vector Database",
+    "website": "https://pinecone.io",
+    "slug": "pinecone"
+  },
+  {
+    "brand": "Weaviate",
+    "industry": "Vector Database",
+    "website": "https://weaviate.io",
+    "slug": "weaviate"
+  },
+  {
+    "brand": "Qdrant",
+    "industry": "Vector Database",
+    "website": "https://qdrant.tech",
+    "slug": "qdrant"
+  },
+  {
+    "brand": "Chroma",
+    "industry": "Vector Database",
+    "website": "https://trychroma.com",
+    "slug": "chroma"
+  },
+  {
+    "brand": "Milvus",
+    "industry": "Vector Database",
+    "website": "https://milvus.io",
+    "slug": "milvus"
+  },
+  {
+    "brand": "Grammarly",
+    "industry": "AI Writing",
+    "website": "https://grammarly.com",
+    "slug": "grammarly"
+  },
+  {
+    "brand": "Otter.ai",
+    "industry": "AI Transcription",
+    "website": "https://otter.ai",
+    "slug": "otter-ai"
+  },
+  {
+    "brand": "Descript",
+    "industry": "AI Video Editing",
+    "website": "https://descript.com",
+    "slug": "descript"
+  },
+  {
+    "brand": "Synthesia",
+    "industry": "AI Video",
+    "website": "https://synthesia.io",
+    "slug": "synthesia"
+  },
+  {
+    "brand": "HeyGen",
+    "industry": "AI Video",
+    "website": "https://heygen.com",
+    "slug": "heygen"
+  },
+  {
+    "brand": "Luma AI",
+    "industry": "AI 3D",
+    "website": "https://lumalabs.ai",
+    "slug": "luma-ai"
+  },
+  {
+    "brand": "Ideogram",
+    "industry": "AI Image Generation",
+    "website": "https://ideogram.ai",
+    "slug": "ideogram"
+  },
+  {
+    "brand": "Leonardo AI",
+    "industry": "AI Image Generation",
+    "website": "https://leonardo.ai",
+    "slug": "leonardo-ai"
+  },
+  {
+    "brand": "Adobe Firefly",
+    "industry": "AI Image Generation",
+    "website": "https://firefly.adobe.com",
+    "slug": "adobe-firefly"
+  },
+  {
+    "brand": "Canva AI",
+    "industry": "AI Design",
+    "website": "https://canva.com",
+    "slug": "canva-ai"
+  },
+  {
+    "brand": "Figma AI",
+    "industry": "AI Design",
+    "website": "https://figma.com",
+    "slug": "figma-ai"
+  },
+  {
+    "brand": "v0",
+    "industry": "AI Coding",
+    "website": "https://v0.dev",
+    "slug": "v0"
+  },
+  {
+    "brand": "Bolt",
+    "industry": "AI Coding",
+    "website": "https://bolt.new",
+    "slug": "bolt"
+  },
+  {
+    "brand": "Lovable",
+    "industry": "AI Coding",
+    "website": "https://lovable.dev",
+    "slug": "lovable"
+  },
+  {
+    "brand": "Devin",
+    "industry": "AI Coding",
+    "website": "https://devin.ai",
+    "slug": "devin"
+  },
+  {
+    "brand": "Character.ai",
+    "industry": "AI Entertainment",
+    "website": "https://character.ai",
+    "slug": "character-ai"
+  },
+  {
+    "brand": "Pi",
+    "industry": "AI Assistant",
+    "website": "https://pi.ai",
+    "slug": "pi"
+  },
+  {
+    "brand": "Inflection AI",
+    "industry": "AI Research",
+    "website": "https://inflection.ai",
+    "slug": "inflection-ai"
+  },
+  {
+    "brand": "Databricks",
+    "industry": "Data & AI",
+    "website": "https://databricks.com",
+    "slug": "databricks"
+  },
+  {
+    "brand": "Snowflake",
+    "industry": "Data & AI",
+    "website": "https://snowflake.com",
+    "slug": "snowflake"
+  },
+  {
+    "brand": "Scale AI",
+    "industry": "AI Data",
+    "website": "https://scale.com",
+    "slug": "scale-ai"
+  },
+  {
+    "brand": "Labelbox",
+    "industry": "AI Data",
+    "website": "https://labelbox.com",
+    "slug": "labelbox"
+  },
+  {
+    "brand": "Jasper Art",
+    "industry": "AI Image Generation",
+    "website": "https://jasper.ai/art",
+    "slug": "jasper-art"
+  },
+  {
+    "brand": "Tome",
+    "industry": "AI Presentations",
+    "website": "https://tome.app",
+    "slug": "tome"
+  },
+  {
+    "brand": "Gamma",
+    "industry": "AI Presentations",
+    "website": "https://gamma.app",
+    "slug": "gamma"
+  },
+  {
+    "brand": "Beautiful.ai",
+    "industry": "AI Presentations",
+    "website": "https://beautiful.ai",
+    "slug": "beautiful-ai"
+  },
+  {
+    "brand": "Mem",
+    "industry": "AI Productivity",
+    "website": "https://mem.ai",
+    "slug": "mem"
+  },
+  {
+    "brand": "Coda AI",
+    "industry": "AI Productivity",
+    "website": "https://coda.io",
+    "slug": "coda-ai"
+  },
+  {
+    "brand": "Slack AI",
+    "industry": "AI Productivity",
+    "website": "https://slack.com",
+    "slug": "slack-ai"
+  },
+  {
+    "brand": "Microsoft Copilot",
+    "industry": "AI Assistant",
+    "website": "https://copilot.microsoft.com",
+    "slug": "microsoft-copilot"
+  },
+  {
+    "brand": "Samsung Galaxy AI",
+    "industry": "AI Assistant",
+    "website": "https://samsung.com/galaxy-ai",
+    "slug": "samsung-galaxy-ai"
+  },
+  {
+    "brand": "Apple Intelligence",
+    "industry": "AI Assistant",
+    "website": "https://apple.com/apple-intelligence",
+    "slug": "apple-intelligence"
+  },
+  {
+    "brand": "Siri",
+    "industry": "AI Assistant",
+    "website": "https://apple.com/siri",
+    "slug": "siri"
+  },
+  {
+    "brand": "Alexa",
+    "industry": "AI Assistant",
+    "website": "https://alexa.amazon.com",
+    "slug": "alexa"
+  },
+  {
+    "brand": "Bittensor",
+    "industry": "AI Crypto",
+    "website": "https://bittensor.com",
+    "slug": "bittensor"
+  },
+  {
+    "brand": "Virtuals Protocol",
+    "industry": "AI Crypto",
+    "website": "https://virtuals.io",
+    "slug": "virtuals-protocol"
+  },
+  {
+    "brand": "NEAR Protocol",
+    "industry": "AI Crypto",
+    "website": "https://near.org",
+    "slug": "near-protocol"
+  },
+  {
+    "brand": "Fetch.ai",
+    "industry": "AI Crypto",
+    "website": "https://fetch.ai",
+    "slug": "fetch-ai"
+  },
+  {
+    "brand": "Ocean Protocol",
+    "industry": "AI Crypto",
+    "website": "https://oceanprotocol.com",
+    "slug": "ocean-protocol"
+  },
+  {
+    "brand": "SingularityNET",
+    "industry": "AI Crypto",
+    "website": "https://singularitynet.io",
+    "slug": "singularitynet"
+  },
+  {
+    "brand": "Render Network",
+    "industry": "AI Crypto",
+    "website": "https://rendernetwork.com",
+    "slug": "render-network"
+  },
+  {
+    "brand": "Akash Network",
+    "industry": "AI Crypto",
+    "website": "https://akash.network",
+    "slug": "akash-network"
+  },
+  {
+    "brand": "Ritual",
+    "industry": "AI Crypto",
+    "website": "https://ritual.net",
+    "slug": "ritual"
+  },
+  {
+    "brand": "Autonolas",
+    "industry": "AI Crypto",
+    "website": "https://olas.network",
+    "slug": "autonolas"
+  },
+  {
+    "brand": "Morpheus",
+    "industry": "AI Crypto",
+    "website": "https://mor.org",
+    "slug": "morpheus"
+  },
+  {
+    "brand": "io.net",
+    "industry": "AI Crypto",
+    "website": "https://io.net",
+    "slug": "io-net"
+  },
+  {
+    "brand": "Grass",
+    "industry": "AI Crypto",
+    "website": "https://getgrass.io",
+    "slug": "grass"
+  },
+  {
+    "brand": "Nosana",
+    "industry": "AI Crypto",
+    "website": "https://nosana.io",
+    "slug": "nosana"
+  },
+  {
+    "brand": "Allora",
+    "industry": "AI Crypto",
+    "website": "https://allora.network",
+    "slug": "allora"
+  },
+  {
+    "brand": "Spectral",
+    "industry": "AI Crypto",
+    "website": "https://spectrallabs.xyz",
+    "slug": "spectral"
+  },
+  {
+    "brand": "MyShell",
+    "industry": "AI Crypto",
+    "website": "https://myshell.ai",
+    "slug": "myshell"
+  },
+  {
+    "brand": "Sahara AI",
+    "industry": "AI Crypto",
+    "website": "https://saharalabs.ai",
+    "slug": "sahara-ai"
+  },
+  {
+    "brand": "Theoriq",
+    "industry": "AI Crypto",
+    "website": "https://theoriq.ai",
+    "slug": "theoriq"
+  },
+  {
+    "brand": "Nillion",
+    "industry": "AI Crypto",
+    "website": "https://nillion.com",
+    "slug": "nillion"
+  },
+  {
+    "brand": "AthenaHQ",
+    "industry": "GEO Platform",
+    "website": "https://athenahq.ai",
+    "slug": "athenahq"
+  },
+  {
+    "brand": "Profound",
+    "industry": "GEO Platform",
+    "website": "https://tryprofound.com",
+    "slug": "profound"
+  },
+  {
+    "brand": "Otterly.AI",
+    "industry": "GEO Platform",
+    "website": "https://otterly.ai",
+    "slug": "otterly-ai"
+  },
+  {
+    "brand": "Peec AI",
+    "industry": "GEO Platform",
+    "website": "https://peec.ai",
+    "slug": "peec-ai"
+  },
+  {
+    "brand": "DareAISearch",
+    "industry": "GEO Platform",
+    "website": "https://dareaisearch.com",
+    "slug": "dareaisearch"
+  }
+]

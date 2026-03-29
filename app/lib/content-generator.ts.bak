@@ -1,0 +1,652 @@
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ""
+
+interface AuditResults {
+  overall_score: number
+  grade: string
+  engines: Record<string, { score: number; mentions: number; sentiment: string; sample_snippets?: string[] }>
+  site_analysis?: {
+    url?: string
+    schema_markup: boolean
+    schema_types?: string[]
+    has_faq: boolean
+    has_about: boolean
+    meta_description: boolean
+    meta_description_text?: string
+    og_tags: boolean
+    h1_text?: string
+    title?: string
+  } | null
+  optimization?: {
+    summary: string
+    immediate_fixes: string[]
+    content_recommendations: string[]
+  }
+}
+
+async function callGemini(prompt: string): Promise<string> {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured")
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0 },
+      }),
+      signal: AbortSignal.timeout(55000),
+    }
+  )
+  const data = await res.json()
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ""
+  if (!text) {
+    console.error("[Gemini] Empty response:", JSON.stringify(data).slice(0, 500))
+  }
+  return text
+}
+
+// ── Fluff filter instructions injected into ALL prompts ──
+const FLUFF_FILTER = `
+BIAS & FLUFF FILTER (MANDATORY):
+- NEVER use these words: "revolutionary", "cutting-edge", "game-changing", "innovative", "next-generation", "best-in-class", "world-class", "state-of-the-art", "disruptive", "synergy", "leverage", "empower", "seamless", "robust", "scalable" (unless citing a specific benchmark).
+- Replace marketing adjectives with: technical specs, concrete numbers, specific capabilities, measurable outcomes.
+- Write in confident, fact-dense, objective tone. No hype. No filler.
+- Example BAD: "Our revolutionary AI platform is a game-changing solution." 
+- Example GOOD: "${"{brand}"} processes 10,000 queries/day with 95% accuracy using a RAG pipeline."
+`
+
+// ── Stats injection instructions for ALL prompts ──
+const STATS_INJECTION = `
+STATS & CITATIONS REQUIREMENT (MANDATORY):
+- Include at least 1 data point, statistic, or technical definition per 300 words.
+- Reference specific studies, benchmarks, or expert quotes where possible.
+- Example: "According to the Princeton 2025 GEO study, content with statistics and expert quotes has ~40% higher probability of being selected by LLMs."
+- Prefer concrete numbers over vague claims: "reduces load time by 2.3s" over "improves performance".
+- If you cannot find a real statistic, use a technical definition or industry benchmark instead.
+`
+
+function auditContext(brand: string, industry: string, audit: AuditResults): string {
+  const engines = Object.entries(audit.engines)
+    .map(([name, d]) => `${name}: ${d.score}/100, ${d.mentions} mentions, ${d.sentiment}`)
+    .join("; ")
+  const site = audit.site_analysis
+  const siteInfo = site
+    ? `Schema: ${site.schema_markup ? "yes" : "MISSING"}, FAQ: ${site.has_faq ? "yes" : "MISSING"}, About: ${site.has_about ? "yes" : "MISSING"}, Meta: ${site.meta_description ? "yes" : "MISSING"}`
+    : "No site data"
+
+  let siteContent = ""
+  if (site) {
+    const parts: string[] = []
+    if (site.title) parts.push(`Page title: "${site.title}"`)
+    if (site.h1_text) parts.push(`Main heading: "${site.h1_text}"`)
+    if (site.meta_description_text) parts.push(`Description: "${site.meta_description_text}"`)
+    if (site.url) parts.push(`URL: ${site.url}`)
+    if (site.schema_types?.length) parts.push(`Schema types: ${site.schema_types.join(", ")}`)
+    if (parts.length > 0) siteContent = ` | Site content: ${parts.join("; ")}`
+  }
+
+  const allSnippets = Object.entries(audit.engines)
+    .flatMap(([name, d]) => (d.sample_snippets || []).map(s => `[${name}] ${s}`))
+  const snippetContext = allSnippets.length > 0
+    ? ` | What AI engines say about ${brand}: ${allSnippets.slice(0, 5).join(" | ")}`
+    : ""
+
+  return `Brand: ${brand} | Industry: ${industry} | Score: ${audit.overall_score}/100 (${audit.grade}) | Engines: ${engines} | Site: ${siteInfo}${siteContent}${snippetContext}`
+}
+
+export async function generateBlogPost(brand: string, industry: string, audit: AuditResults): Promise<string> {
+  const prompt = `You are a GEO content strategist. Write an ~800 word blog post optimized for AI citation about "${brand}" in the ${industry} industry.
+
+Context: ${auditContext(brand, industry, audit)}
+
+CRITICAL GEO RULES — follow these exactly:
+1. ANSWER-FIRST: The very first 1-3 sentences must directly answer what ${brand} is and what it does. LLMs use RAG and extract the first paragraph. If the answer isn't there, they skip to a competitor.
+2. Title must be a clear statement (not a question). Example: "${brand} is a [category] tool that [what it does]" NOT "What is ${brand}?"
+3. Every section starts with a direct answer sentence before elaboration
+4. Include a markdown TABLE comparing ${brand} to alternatives or summarizing features — LLMs extract tables easily
+5. Include a bulleted list of key capabilities — LLMs extract lists easily
+6. Use SEMANTIC DENSITY: naturally include LSI terms related to ${industry} (don't repeat one keyword, cover the semantic field)
+7. Include 3-5 statistics or authoritative claims with sources
+8. Mention "${brand}" naturally 5-8 times with entity-rich descriptions ("${brand} is a...", "${brand} provides...")
+9. End with an FAQ section (2-3 Q&As) where each answer starts with a direct statement
+10. Write in authoritative, factual tone
+
+${FLUFF_FILTER.replace(/\$\{"{brand}"\}/g, brand)}
+${STATS_INJECTION}
+
+Return the blog post in markdown format. Do NOT wrap in code blocks.`
+
+  return await callGemini(prompt)
+}
+
+export async function generateFAQPage(brand: string, industry: string, audit: AuditResults): Promise<{ html: string; jsonLd: string }> {
+  const prompt = `Create 8-10 FAQ Q&As for "${brand}" in ${industry}. Context: ${auditContext(brand, industry, audit)}
+
+CRITICAL GEO RULES:
+1. ANSWER-FIRST: Every answer must start with a direct, factual statement in the first sentence. This is what LLMs extract via RAG.
+2. Questions should match what people ask AI engines (e.g. "What is ${brand}?", "How does ${brand} compare to...")
+3. Answers should be 2-4 sentences, factual, mention "${brand}" in the first sentence of each answer
+4. Use entity-rich language: "${brand} is a [category] [tool/platform/service] that [what it does]"
+5. Include semantic terms related to ${industry} naturally
+6. Include at least 2 answers that cite a specific statistic, benchmark, or technical definition.
+
+${FLUFF_FILTER.replace(/\$\{"{brand}"\}/g, brand)}
+${STATS_INJECTION}
+
+Return ONLY a JSON object with this structure (no markdown, no code blocks):
+{"faqs":[{"question":"...","answer":"..."}]}`
+
+  const raw = await callGemini(prompt)
+  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+
+  let faqs: { question: string; answer: string }[] = []
+  try {
+    const parsed = JSON.parse(cleaned)
+    faqs = parsed.faqs || parsed.FAQ || parsed.questions || []
+    if (Array.isArray(parsed)) faqs = parsed
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/)
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[0])
+        faqs = parsed.faqs || parsed.FAQ || parsed.questions || []
+      } catch {
+        const arrMatch = cleaned.match(/\[[\s\S]*\]/)
+        if (arrMatch) {
+          try { faqs = JSON.parse(arrMatch[0]) } catch { /* fallback below */ }
+        }
+      }
+    }
+  }
+  faqs = faqs.filter((f: unknown): f is { question: string; answer: string } =>
+    typeof f === "object" && f !== null && "question" in f && "answer" in f
+  )
+  if (faqs.length === 0) {
+    faqs = [{ question: `What is ${brand}?`, answer: `${brand} is a company in the ${industry} space.` }]
+  }
+
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map(f => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  }, null, 2)
+
+  const html = faqs.map(f =>
+    `<div class="faq-item">\n  <h3>${f.question}</h3>\n  <p>${f.answer}</p>\n</div>`
+  ).join("\n\n")
+
+  return { html, jsonLd }
+}
+
+export async function generateSchemaMarkup(
+  brand: string, website: string, industry: string, audit: AuditResults
+): Promise<string> {
+  const site = audit.site_analysis
+  const prompt = `Generate comprehensive, production-ready JSON-LD schema markup for "${brand}" (${website}) in ${industry}.
+
+Context: ${auditContext(brand, industry, audit)}
+
+ENTITY ARCHITECT RULES — generate entity-rich, Knowledge Graph-optimized schema:
+
+1. Organization schema:
+   - "name": "${brand}" (exact brand name, never "our tool" or "our company")
+   - "url": "${website}"
+   - "description": Based on actual site data: "${site?.meta_description_text || site?.title || ""}". Keep factual.
+   - "sameAs": Array of plausible profile URLs — generate based on the brand name and industry:
+     * LinkedIn company page URL pattern: "https://www.linkedin.com/company/${brand.toLowerCase().replace(/[^a-z0-9]/g, "-")}"
+     * Twitter/X URL pattern: "https://x.com/${brand.replace(/\s+/g, "")}"
+     * GitHub URL pattern (if tech): "https://github.com/${brand.replace(/\s+/g, "")}"
+     * Crunchbase pattern: "https://www.crunchbase.com/organization/${brand.toLowerCase().replace(/[^a-z0-9]/g, "-")}"
+     Only include profiles that are plausible for the ${industry} industry.
+   - "knowsAbout": Array of 3-5 industry topics/entities this brand is associated with
+
+2. SoftwareApplication or Service schema (choose based on industry):
+   - Use "${brand}" as the name explicitly
+   - "applicationCategory": appropriate category for ${industry}
+   - "offers": with pricing info if available from site data
+   - "operatingSystem": if applicable
+
+3. FAQPage schema with 3 key questions:
+   - Each question uses "${brand}" by name
+   - Each answer starts with a direct factual statement about "${brand}"
+
+4. WebSite schema with SearchAction (if applicable)
+
+5. Add "mentions" arrays where appropriate — list 2-3 related entities/concepts in the ${industry} space as:
+   {"@type": "Thing", "name": "entity name", "sameAs": "https://en.wikipedia.org/wiki/Entity_Name"}
+
+Return ONLY a raw JSON array of schema objects (no markdown, no code blocks, no explanation). Ready to paste into <script type="application/ld+json">.`
+
+  const raw = await callGemini(prompt)
+  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+  const match = cleaned.match(/[\[{][\s\S]*[\]}]/)
+  if (match) {
+    try {
+      return JSON.stringify(JSON.parse(match[0]), null, 2)
+    } catch { /* fall through */ }
+  }
+  return cleaned
+}
+
+export async function generateSocialPosts(brand: string, industry: string, audit: AuditResults): Promise<string[]> {
+  const prompt = `Create 20 platform-native social media and directory posts for "${brand}" in ${industry} optimized for AI training data ingestion and maximum distribution.
+
+Context: ${auditContext(brand, industry, audit)}
+
+CRITICAL GEO RULES:
+1. ANSWER-FIRST: Every post must lead with what ${brand} IS and DOES in the first sentence. LLMs extract the opening line.
+2. Entity-rich language: "${brand} is a [category] [tool/platform] that [action]" — not vague marketing
+3. Include semantic terms from ${industry} naturally (LSI terms, not keyword stuffing)
+4. Each post is a standalone factual statement an LLM could cite as a source
+
+${FLUFF_FILTER.replace(/\$\{"{brand}"\}/g, brand)}
+${STATS_INJECTION}
+
+Platform-appropriate tone and formatting for each:
+  * 3 Twitter/X posts (short, punchy, with a concrete data point or stat)
+  * 2 LinkedIn posts (professional, insight-driven, cite a study or benchmark)
+  * 2 Reddit posts (authentic, community-value, no self-promo tone)
+  * 1 Dev.to intro (technical, builder perspective)
+  * 1 Hashnode post (developer blog style)
+  * 1 HackerNews submission title + comment
+  * 1 Medium intro paragraph
+  * 1 Stack Overflow Q&A style (problem ${brand} solves)
+  * 1 Quora answer style
+  * 1 Product Hunt tagline + description
+  * 1 AI tool directory description (for Toolify, AITOOLS.fyi, etc.)
+  * 1 GitHub README intro
+  * 1 Telegraph article intro
+  * 1 IndieHackers/BuildInPublic post
+  * 2 general directory submission descriptions (short + long)
+
+Return ONLY a JSON array of 20 strings (no markdown, no code blocks):
+["post1","post2",...,"post20"]`
+
+  const raw = await callGemini(prompt)
+  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+  try {
+    const match = cleaned.match(/\[[\s\S]*\]/)
+    return JSON.parse(match?.[0] || "[]")
+  } catch {
+    return [`Check out ${brand} — a leading solution in ${industry}.`]
+  }
+}
+
+export async function generateAboutPageCopy(brand: string, industry: string, audit: AuditResults): Promise<string> {
+  const prompt = `Write entity-rich "About" page copy for "${brand}" in ${industry}.
+
+Context: ${auditContext(brand, industry, audit)}
+
+CRITICAL GEO RULES:
+1. ANSWER-FIRST: The very first sentence must be "${brand} is a [category] [tool/company] that [what it does]." This is what LLMs extract.
+2. ~300-400 words
+3. Every subsection starts with a direct statement, not a question or vague intro
+4. Use structured language AI can extract entities from
+5. Include a markdown TABLE of key capabilities or features — LLMs extract tables easily
+6. Include a bulleted list — LLMs extract lists easily
+7. Mention the industry/category and semantic terms naturally throughout
+8. Include "What We Do" and "Our Mission" subsections — each starting with a factual statement
+9. Authoritative, third-person tone
+
+${FLUFF_FILTER.replace(/\$\{"{brand}"\}/g, brand)}
+${STATS_INJECTION}
+
+Return in markdown format. No code blocks wrapping.`
+
+  return await callGemini(prompt)
+}
+
+export async function generateLlmsTxt(brand: string, url: string, audit: AuditResults): Promise<string> {
+  const site = audit.site_analysis
+  const cleanUrl = url.replace(/\/+$/, "")
+
+  const siteContext: string[] = []
+  if (site) {
+    if (site.title) siteContext.push(`Site title: "${site.title}"`)
+    if (site.h1_text) siteContext.push(`Main heading: "${site.h1_text}"`)
+    if (site.meta_description_text) siteContext.push(`Description: "${site.meta_description_text}"`)
+    if (site.schema_types?.length) siteContext.push(`Schema types found: ${site.schema_types.join(", ")}`)
+    siteContext.push(`Has FAQ page: ${site.has_faq ? "yes" : "no"}`)
+    siteContext.push(`Has About page: ${site.has_about ? "yes" : "no"}`)
+  }
+
+  const snippets = Object.values(audit.engines)
+    .flatMap(d => d.sample_snippets || [])
+    .slice(0, 3)
+  if (snippets.length > 0) siteContext.push(`AI engines describe the brand as: ${snippets.join("; ")}`)
+
+  const knownPages: string[] = []
+  if (site?.has_about) knownPages.push(`- [About ${brand}](${cleanUrl}/about): About the company`)
+  if (site?.has_faq) knownPages.push(`- [FAQ](${cleanUrl}/faq): Frequently asked questions`)
+  knownPages.push(`- [Home](${cleanUrl}): ${site?.meta_description_text || "Main page"}`)
+
+  const prompt = `Generate an entity-optimized llms.txt file for "${brand}" (${cleanUrl}).
+
+llms.txt is a standard (like robots.txt) that helps AI models understand a website. This version must be ENTITY-FOCUSED and CLAIM-RICH.
+
+IMPORTANT CONTEXT about what ${brand} actually does:
+${siteContext.length > 0 ? siteContext.join("\n") : "No site data available — use the brand name and industry context only."}
+
+Known pages on the site:
+${knownPages.join("\n")}
+
+Score: ${audit.overall_score}/100, grade: ${audit.grade}.
+
+ENTITY-OPTIMIZED llms.txt RULES:
+1. Start with the brand name as H1 and a one-line factual description
+2. Add a "## Key Entities" section listing the brand's most important entities and their relationships:
+   - The brand itself (what it is, what category)
+   - Key products/features (named explicitly)
+   - Industry associations (which space it operates in)
+   - Related technologies or standards it uses
+3. Add a "## Factual Claims" section with 5-8 verifiable claims about the brand:
+   - What it does (specific capabilities, not marketing)
+   - Who it serves (target audience)
+   - Technical specifications or benchmarks
+   - Integrations, standards supported, platforms
+4. Add a "## Pages" section with known pages
+5. Keep it concise, factual, crawler-optimized — NO marketing language
+6. ONLY reference pages that likely exist based on the site analysis above
+
+${FLUFF_FILTER.replace(/\$\{"{brand}"\}/g, brand)}
+
+Generate with this format (no code blocks, no extra explanation):
+
+# ${brand}
+
+> [One-line factual description]
+
+## Key Entities
+- ${brand}: [category] — [what it does]
+- [Product/Feature 1]: [description]
+- [Related entity]: [relationship to ${brand}]
+
+## Factual Claims
+- [Claim 1 with specific detail]
+- [Claim 2 with specific detail]
+
+## Pages
+${knownPages.join("\n")}
+
+## Optional
+(add 2-3 plausible pages only if the site likely has them)
+
+Return ONLY the llms.txt content. No wrapping, no code blocks.`
+
+  return await callGemini(prompt)
+}
+
+// ── NEW: RAG-Optimized Chunks ──
+export async function generateRagChunks(brand: string, industry: string, audit: AuditResults): Promise<string[]> {
+  const prompt = `Generate 8-10 standalone RAG-optimized content chunks for "${brand}" in ${industry}.
+
+Context: ${auditContext(brand, industry, audit)}
+
+RAG CHUNKING RULES:
+1. Each chunk must be 75-300 words — standalone and self-contained
+2. Each chunk must contain BOTH the answer AND the context (entity name, category, what it does)
+3. The FIRST 50 words of each chunk must be a complete standalone summary that answers a question
+4. A reader seeing ONLY this chunk (with no other context) must understand what ${brand} is and the specific point being made
+5. Cover different angles: what it is, how it works, who uses it, pricing/plans, comparisons, technical specs, use cases, integrations
+6. Every chunk must mention "${brand}" by name at least twice
+7. Each chunk should be answering an implicit question that a user might ask an LLM
+
+${FLUFF_FILTER.replace(/\$\{"{brand}"\}/g, brand)}
+${STATS_INJECTION}
+
+Return ONLY a JSON array of strings, each string being one chunk (no markdown, no code blocks):
+["chunk1 text here","chunk2 text here",...]`
+
+  const raw = await callGemini(prompt)
+  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+  try {
+    const match = cleaned.match(/\[[\s\S]*\]/)
+    return JSON.parse(match?.[0] || "[]")
+  } catch {
+    return [`${brand} is a ${industry} solution. Contact ${brand} for more information.`]
+  }
+}
+
+// ── NEW: Citation Strategy ──
+export async function generateCitationStrategy(brand: string, industry: string, audit: AuditResults): Promise<string> {
+  // Build competitor/citation context from audit snippets
+  const engineSnippets = Object.entries(audit.engines)
+    .map(([name, d]) => {
+      const snippets = (d.sample_snippets || []).join(" | ")
+      return `${name} (score: ${d.score}, mentions: ${d.mentions}): ${snippets || "no snippets"}`
+    }).join("\n")
+
+  const prompt = `You are a GEO citation strategist. Generate a Citation Source Mapping & Strategy document for "${brand}" in ${industry}.
+
+AUDIT DATA — what AI engines currently say:
+${engineSnippets}
+
+Overall score: ${audit.overall_score}/100 (${audit.grade})
+Site data: ${audit.site_analysis?.title || "unknown"} — ${audit.site_analysis?.meta_description_text || "no description"}
+
+GENERATE A STRATEGY DOCUMENT with these sections:
+
+## 1. Citation Source Analysis
+- Based on what AI engines are saying (see snippets above), identify which types of sources they are likely pulling data from
+- Common high-citation sources for ${industry}: Wikipedia, G2, Capterra, Reddit, StackOverflow, niche blogs, comparison sites, industry publications
+- List the top 5-8 platforms/sites where AI engines likely get their ${industry} data
+
+## 2. Competitor Citation Patterns
+- From the AI engine responses, identify which competitors or alternatives are being mentioned alongside or instead of ${brand}
+- What are these competitors doing right that earns them citations?
+
+## 3. Presence Strategy
+- For each high-citation platform identified, provide:
+  * Platform name
+  * Why it matters for AI citation
+  * Current ${brand} presence (inferred: likely present / likely absent)
+  * Priority: HIGH / MEDIUM / LOW
+  * Action: specific steps to create or improve presence
+
+## 4. Seed Content Snippets
+- For each HIGH priority platform, draft a ready-to-post seed content snippet (50-150 words) that:
+  * Mentions ${brand} naturally (not spammy)
+  * Is factual and provides genuine value
+  * Matches the platform's tone and format
+  * Contains entity-rich language an LLM would want to cite
+- Draft at least 5 seed content snippets for different platforms
+
+## 5. Quick Wins
+- Top 3 actions ${brand} can take THIS WEEK to improve AI citation probability
+- Each with expected impact and effort level
+
+${FLUFF_FILTER.replace(/\$\{"{brand}"\}/g, brand)}
+${STATS_INJECTION}
+
+Return in markdown format. No code block wrapping.`
+
+  return await callGemini(prompt)
+}
+
+// ── Robots.txt Audit (unchanged) ──
+interface RobotsCrawlerResult {
+  crawler: string
+  blocked: boolean
+  rules: string[]
+}
+
+interface RobotsAuditResult {
+  fetched: boolean
+  error?: string
+  raw?: string
+  crawlers: RobotsCrawlerResult[]
+  summary: { allowed: string[]; blocked: string[] }
+  recommendations: string[]
+}
+
+const AI_CRAWLERS = [
+  "GPTBot", "ChatGPT-User", "Google-Extended", "anthropic",
+  "ClaudeBot", "Bytespider", "CCBot", "PerplexityBot",
+  "Amazonbot", "FacebookBot", "meta-externalagent", "cohere-ai",
+]
+
+export async function auditRobotsTxt(url: string): Promise<RobotsAuditResult> {
+  const cleanUrl = url.replace(/\/+$/, "")
+  let robotsTxt: string
+
+  try {
+    const res = await fetch(`${cleanUrl}/robots.txt`, { signal: AbortSignal.timeout(10000) })
+    if (!res.ok) {
+      return {
+        fetched: false,
+        error: `robots.txt returned ${res.status}`,
+        crawlers: AI_CRAWLERS.map(c => ({ crawler: c, blocked: false, rules: [] })),
+        summary: { allowed: [...AI_CRAWLERS], blocked: [] },
+        recommendations: ["No robots.txt found — all AI crawlers have unrestricted access. Consider adding one to control AI crawler access."],
+      }
+    }
+    robotsTxt = await res.text()
+  } catch (e) {
+    return {
+      fetched: false,
+      error: `Failed to fetch robots.txt: ${e instanceof Error ? e.message : "unknown"}`,
+      crawlers: AI_CRAWLERS.map(c => ({ crawler: c, blocked: false, rules: [] })),
+      summary: { allowed: [...AI_CRAWLERS], blocked: [] },
+      recommendations: ["Could not fetch robots.txt — ensure the file is accessible."],
+    }
+  }
+
+  const lines = robotsTxt.split("\n").map(l => l.trim())
+  const crawlerResults: RobotsCrawlerResult[] = []
+
+  for (const crawler of AI_CRAWLERS) {
+    let currentAgent = ""
+    let blocked = false
+    const rules: string[] = []
+    const crawlerLower = crawler.toLowerCase()
+
+    for (const line of lines) {
+      const lower = line.toLowerCase()
+      if (lower.startsWith("user-agent:")) {
+        currentAgent = lower.replace("user-agent:", "").trim()
+      } else if (currentAgent === crawlerLower || currentAgent === "*") {
+        if (lower.startsWith("disallow:")) {
+          const path = line.split(":").slice(1).join(":").trim()
+          if (path === "/" || path === "/*") {
+            if (currentAgent === crawlerLower) {
+              blocked = true
+              rules.push(line)
+            } else if (currentAgent === "*") {
+              if (!blocked) { blocked = true; rules.push(`${line} (via User-agent: *)`) }
+            }
+          } else if (path && currentAgent === crawlerLower) {
+            rules.push(line)
+          }
+        }
+      }
+    }
+
+    // Check if specific agent overrides wildcard
+    let tempAgent = ""
+    for (const line of lines) {
+      const lower = line.toLowerCase()
+      if (lower.startsWith("user-agent:")) {
+        tempAgent = lower.replace("user-agent:", "").trim()
+      } else if (tempAgent === crawlerLower && lower.startsWith("allow:")) {
+        const path = line.split(":").slice(1).join(":").trim()
+        if (path === "/" || path === "/*") { blocked = false }
+      }
+    }
+
+    crawlerResults.push({ crawler, blocked, rules })
+  }
+
+  const allowed = crawlerResults.filter(c => !c.blocked).map(c => c.crawler)
+  const blockedList = crawlerResults.filter(c => c.blocked).map(c => c.crawler)
+
+  const recommendations: string[] = []
+  if (blockedList.length === 0) {
+    recommendations.push("No AI crawlers are currently blocked. If you want to control AI training on your content, consider blocking specific crawlers.")
+  }
+  if (allowed.length > 0 && blockedList.length > 0) {
+    recommendations.push(`Partial blocking detected: ${blockedList.length} blocked, ${allowed.length} allowed. Consider a consistent policy.`)
+  }
+  if (blockedList.length === AI_CRAWLERS.length) {
+    recommendations.push("All major AI crawlers are blocked. This may reduce your visibility in AI-generated answers. Consider allowing some if GEO is a priority.")
+  }
+  if (!blockedList.includes("Bytespider")) {
+    recommendations.push("Bytespider (ByteDance) is not blocked — it's one of the most aggressive AI crawlers.")
+  }
+
+  return {
+    fetched: true,
+    raw: robotsTxt.slice(0, 2000),
+    crawlers: crawlerResults,
+    summary: { allowed, blocked: blockedList },
+    recommendations,
+  }
+}
+
+// ── Main entry point ──
+export async function generateAllContent(brand: string, website: string, industry: string, audit: AuditResults) {
+  const robotsAudit = website
+    ? await auditRobotsTxt(website).catch(() => ({ fetched: false, error: "Failed", crawlers: [], summary: { allowed: [], blocked: [] }, recommendations: [] }))
+    : null;
+
+  // Batch 1: blog, FAQ, schema (3 calls)
+  const [blogPost, faqPage, schemaMarkup] = await Promise.all([
+    generateBlogPost(brand, industry, audit).catch((e) => { console.error("[fix] blogPost error:", e); return ""; }),
+    generateFAQPage(brand, industry, audit).catch((e) => { console.error("[fix] faqPage error:", e); return { html: "", jsonLd: "" }; }),
+    generateSchemaMarkup(brand, website || "", industry, audit).catch((e) => { console.error("[fix] schema error:", e); return ""; }),
+  ]);
+
+  await new Promise((r) => setTimeout(r, 1500));
+
+  // Batch 2: social, about, llms.txt (3 calls)
+  const [socialPosts, aboutPageCopy, llmsTxt] = await Promise.all([
+    generateSocialPosts(brand, industry, audit).catch((e) => { console.error("[fix] social error:", e); return []; }),
+    generateAboutPageCopy(brand, industry, audit).catch((e) => { console.error("[fix] about error:", e); return ""; }),
+    generateLlmsTxt(brand, website || "", audit).catch((e) => { console.error("[fix] llms error:", e); return ""; }),
+  ]);
+
+  await new Promise((r) => setTimeout(r, 1500));
+
+  // Batch 3: RAG chunks, citation strategy (2 calls)
+  const [ragChunks, citationStrategy] = await Promise.all([
+    generateRagChunks(brand, industry, audit).catch((e) => { console.error("[fix] ragChunks error:", e); return []; }),
+    generateCitationStrategy(brand, industry, audit).catch((e) => { console.error("[fix] citation error:", e); return ""; }),
+  ]);
+
+  return {
+    blog_post: blogPost,
+    faq_page: faqPage,
+    schema_markup: schemaMarkup,
+    social_posts: socialPosts,
+    about_page_copy: aboutPageCopy,
+    llms_txt: llmsTxt,
+    rag_chunks: ragChunks,
+    citation_strategy: citationStrategy,
+    robots_audit: robotsAudit,
+    agent_toolkit: {
+      chrome_setup: {
+        description: "Install headless Chrome in restricted sandboxes (no root required). Run this first if your agent needs to deploy content or interact with websites.",
+        install_command: "curl -fsSL https://xanlens.xyz/tools/chrome-setup.sh | bash",
+        source_command: "source ~/.chrome-sandbox-env",
+        github: "https://github.com/FeyDeFi/xanlens/blob/main/tools/agent-chrome-setup.sh",
+        requirements: ["Linux x86_64", "Node.js 18+", "~1GB disk space", "Internet access"],
+        what_it_does: [
+          "Installs Homebrew (if not present)",
+          "Installs Chrome dependencies via brew (no root needed)",
+          "Sets up LD_LIBRARY_PATH for shared libraries",
+          "Installs Playwright + Chromium",
+          "Verifies Chrome launches successfully",
+        ],
+      },
+      consult_gemini: {
+        description: "Free AI consultation skill. Ask Gemini questions when your agent needs a second opinion or current information.",
+        install_command: "curl -fsSL https://xanlens.xyz/tools/consult-gemini.py -o consult-gemini.py",
+        usage: 'python3 consult-gemini.py "your question here"',
+        cost: "Free (uses Google Gemini API free tier)",
+      },
+    },
+  }
+}

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#000"/>
+  <g transform="translate(200,180)">
+    <!-- Body - rounded rectangle robot -->
+    <rect x="-65" y="-60" width="130" height="120" rx="30" fill="white"/>
+    <!-- Single big eye (cyclops style - "visibility") -->
+    <circle cx="0" cy="-10" r="32" fill="#000"/>
+    <circle cx="0" cy="-10" r="22" fill="white"/>
+    <circle cx="6" cy="-14" r="12" fill="#000"/>
+    <!-- Eye shine -->
+    <circle cx="12" cy="-20" r="4" fill="white"/>
+    <!-- Antenna -->
+    <line x1="0" y1="-60" x2="0" y2="-85" stroke="white" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="0" cy="-92" r="7" fill="white"/>
+    <!-- Signal waves from antenna -->
+    <path d="M-18,-105 Q0,-120 18,-105" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M-28,-115 Q0,-135 28,-115" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.5"/>
+    <!-- Little arms -->
+    <line x1="-65" y1="0" x2="-85" y2="-15" stroke="white" stroke-width="6" stroke-linecap="round"/>
+    <line x1="65" y1="0" x2="85" y2="-15" stroke="white" stroke-width="6" stroke-linecap="round"/>
+    <!-- Mouth - small smile -->
+    <path d="M-15,25 Q0,35 15,25" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <!-- Feet -->
+    <rect x="-45" y="60" width="30" height="15" rx="7" fill="white"/>
+    <rect x="15" y="60" width="30" height="15" rx="7" fill="white"/>
+  </g>
+</svg>

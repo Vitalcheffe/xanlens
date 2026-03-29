@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#000"/>
+  <g transform="translate(200,180)">
+    <!-- Radar circles -->
+    <circle cx="0" cy="0" r="90" stroke="#222" stroke-width="1.5" fill="none"/>
+    <circle cx="0" cy="0" r="60" stroke="#222" stroke-width="1.5" fill="none"/>
+    <circle cx="0" cy="0" r="30" stroke="#333" stroke-width="1.5" fill="none"/>
+    <!-- Crosshairs -->
+    <line x1="-95" y1="0" x2="95" y2="0" stroke="#222" stroke-width="1"/>
+    <line x1="0" y1="-95" x2="0" y2="95" stroke="#222" stroke-width="1"/>
+    <!-- Radar sweep -->
+    <path d="M0,0 L0,-90 A90,90 0 0,1 78,-45 Z" fill="white" opacity="0.12"/>
+    <!-- Sweep line -->
+    <line x1="0" y1="0" x2="78" y2="-45" stroke="white" stroke-width="2.5"/>
+    <!-- Detected dots (brands being found) -->
+    <circle cx="45" cy="-25" r="5" fill="white"/>
+    <circle cx="-20" cy="50" r="4" fill="white" opacity="0.5"/>
+    <circle cx="60" cy="35" r="3.5" fill="white" opacity="0.3"/>
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="4" fill="white"/>
+  </g>
+  <!-- Text -->
+  <text x="200" y="320" text-anchor="middle" fill="white" font-family="Inter, system-ui, sans-serif" font-size="36" font-weight="600" letter-spacing="6">VISIBLE</text>
+  <text x="200" y="355" text-anchor="middle" fill="#666" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="400" letter-spacing="4">AI</text>
+</svg>

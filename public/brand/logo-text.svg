@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <rect width="400" height="120" fill="#000"/>
+  <!-- Logo mark -->
+  <circle cx="60" cy="60" r="30" stroke="white" stroke-width="6" fill="none"/>
+  <circle cx="60" cy="60" r="13" fill="white"/>
+  <!-- Text -->
+  <text x="110" y="68" fill="white" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="600" letter-spacing="3">VISIBLE</text>
+  <text x="318" y="68" fill="#666" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="300" letter-spacing="3">AI</text>
+</svg>

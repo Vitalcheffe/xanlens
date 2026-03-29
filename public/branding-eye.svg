@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#000"/>
+  <!-- Eye shape made of signal/wifi-like arcs -->
+  <g transform="translate(200,200)">
+    <!-- Outer arc top -->
+    <path d="M-120,-40 Q0,-120 120,-40" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <!-- Middle arc top -->
+    <path d="M-80,-30 Q0,-80 80,-30" stroke="white" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- Outer arc bottom -->
+    <path d="M-120,40 Q0,120 120,40" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <!-- Middle arc bottom -->
+    <path d="M-80,30 Q0,80 80,30" stroke="white" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- Pupil / signal dot -->
+    <circle cx="0" cy="0" r="18" fill="white"/>
+    <!-- Inner ring -->
+    <circle cx="0" cy="0" r="30" stroke="white" stroke-width="4" fill="none"/>
+  </g>
+  <!-- Text -->
+  <text x="200" y="310" text-anchor="middle" fill="white" font-family="Inter, system-ui, sans-serif" font-size="36" font-weight="600" letter-spacing="6">VISIBLE</text>
+  <text x="200" y="345" text-anchor="middle" fill="#666" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="400" letter-spacing="4">AI</text>
+</svg>
